@@ -1,7 +1,5 @@
 import asyncio
-import os
-import subprocess
-from loader import bot, dp
+from loader import bot, dp, chat_log
 from aiogram import types
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.dispatcher.filters.state import StatesGroup, State
@@ -76,12 +74,11 @@ async def back_in_admin(call: CallbackQuery):
 
 @dp.message_handler(commands=['wipe'])
 async def start_wipe(message: types.Message):
-    await confirm_wipe(message)
-
-
-@dp.callback_query_handler(state=WipeConfirmation.CONFIRMATION)
-async def process_wipe_confirmation(callback_query: types.CallbackQuery, state: FSMContext):
-    await wipe(callback_query, state, callback_query.message)
+	if not Admins.get_or_none(id=message.chat.id):
+		return
+	if not "view" in Admins.get(id=message.chat.id).rights:
+		return await message.reply(strings["no_rights"])
+	await confirm_wipe(message)
 
 @dp.message_handler(commands=["restart"])
 async def restart_echo(message: types.Message):
@@ -116,8 +113,6 @@ async def purge(message: Message):
 					return await message.reply(strings["no_reply"])
 
 	user_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
-	if message.chat.id == user_id:
-		return await message.reply("Свои сообщения нельзя удалять")
 
 	if not user_id:
 		return await message.reply(strings["no_msg"])
@@ -143,10 +138,10 @@ async def purge(message: Message):
 
 	try:
 		USER = await bot.get_chat(user_id)
-		await bot.send_message(-1001909107950,
+		await bot.send_message(chat_log,
 			f"#PURGE\n<b>Админ:</b> <a href='{get_mention(mj.chat)}'>{mj.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Сообщение:</b>"
 		)
-		await bot.forward_message(chat_id=-1001909107950, from_chat_id=user_id, message_id=get_reply_id(replies, user_id))
+		await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id))
 	except: pass
 
 	ims = await bot.send_message(user_id, f"Ваше сообщение было удалено" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_to_message_id=reply_msg_id, reply_markup=keyboard)
@@ -267,13 +262,34 @@ async def mute(message: Message):
 
 	try:
 		USER = await bot.get_chat(sender_id)
-		await bot.send_message(-1001909107950,
-			f"#MUTE\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Час:</b> {duration}"
-		)
-		await bot.forward_message(chat_id=-1001909107950, from_chat_id=user_id, message_id=get_reply_id(replies, user_id))
+		await bot.send_message(chat_log, f"#MUTE\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Час:</b> {duration}")
+		await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id))
 	except: pass
 
-	ims = await bot.send_message(sender_id, f"Твоё сообщение было удалено и тебя было замучено на <code>{duration}</code>" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id))
+	duration = duration.total_seconds()
+	seconds = int(duration % 60)
+	minutes = int((duration // 60) % 60)
+	hours = int((duration // 3600) % 24)
+	days = int((duration // 86400) % 30.4375)  # средняя продолжительность месяца
+	months = int((duration // 2629800) % 12)  # средняя продолжительность года
+	years = int(duration // 31557600)  # продолжительность года
+
+	duration_string = ""
+	if years > 0:
+		duration_string += f"{years} год{'' if years == 1 else 'ов'} "
+	if months > 0:
+		duration_string += f"{months} месяц{'' if months == 1 else 'ев'} "
+	if days > 0:
+		duration_string += f"{days} д{'ень ' if days == 1 else 'ней '}"
+	if hours > 0:
+		duration_string += f"{hours} час{' ' if hours == 1 else 'ов '}"
+	if minutes > 0:
+		duration_string += f"{minutes} минут{' ' if minutes == 1 else ' '}"
+	if seconds > 0:
+		duration_string += f"{seconds} секунд{'а' if seconds == 1 else ''}"
+
+	ims = await bot.send_message(sender_id, f"Твоё сообщение было удалено и тебя было замучено на {duration_string}" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id))
+
 	await asyncio.gather(*[
 		bot.delete_message(data["chat_id"], data["msg_id"])
 		for data in replies
@@ -335,8 +351,8 @@ async def warn_user(message):
                 for data in replies
                 if data["chat_id"] != user_id and data["chat_id"] != message.chat.id
             ], return_exceptions=True)
-        await bot.send_message(-1001909107950, f"#WARN\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\nСообщение:", parse_mode="HTML")
-        await bot.forward_message(chat_id=-1001909107950, from_chat_id=user_id, message_id=get_reply_id(replies, user_id))
+        await bot.send_message(chat_log, f"#WARN\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\nСообщение:", parse_mode="HTML")
+        await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id))
     else:
         await message.reply(strings["no_user"])
 
@@ -418,7 +434,7 @@ async def unload(msg):
         ims = await msg.reply("<b>Never gonna give you up</b>\n<tg-spoiler>Вы были отключены от чата на 45 минут</tg-spoiler>", parse_mode="HTML")
         await bot.pin_chat_message(ims.chat.id, ims.message_id)
         try:
-            await bot.send_message(-1001909107950, f"#NEVER_GONNA_GIVE_YOU_UP\n<b>ID:</b>{msg.from_user.id}")
+            await bot.send_message(chat_log, f"#NEVER_GONNA_GIVE_YOU_UP\n<b>ID:</b><code>{msg.from_user.id}</code>")
         except:
             pass
 

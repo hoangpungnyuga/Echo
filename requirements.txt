@@ -2,3 +2,4 @@ aiogram
 peewee
 lightdb
 ping3
+colorama

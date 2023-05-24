@@ -1,11 +1,10 @@
-from loader import bot, dp
+from loader import bot, dp, chat_log
 import asyncio
 import ping3
-import timeit
 import logging
 import time
 from aiogram import types
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from data.functions.models import *
 from aiogram.types.message_id import MessageId
 from aiogram.dispatcher.filters.state import StatesGroup, State
@@ -22,24 +21,25 @@ def get_mention(user):
 @dp.message_handler(commands=["rules"])
 async def rules(message: Message):
 	keyboard = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"RULES", url="https://telegra.ph/Rules-Echo-to-Kim-04-30"))
-	await message.reply(f"Правила этого бота\nТак же по поводу вопросов писать @Sunzurai", reply_markup=keyboard)
+	await message.reply(f"Правила этого бота\nТак же по поводу вопросов писать\n<b>>></b> @Sunzurai or @HateisEternal", reply_markup=keyboard)
 
 @dp.message_handler(commands=["users"])
 async def stats(message: Message):
 	users = Users.select()
-	await message.reply(f"👾На данный момент сейчас <code>{len(users)}</code> пользователей в боте")
+	await message.reply(f"👾 На данный момент сейчас <code>{len(users)}</code> пользователей в боте")
+
 @dp.message_handler(commands=["nick"])
 async def nick(message: Message):
-	await message.reply(f'Oops.. Это уже не юзабельно😾 Теперь используй /tag')
+	await message.reply(f'Oops.. Это не юзабельно!😾 Вместо этого используй /tag')
 
 @dp.message_handler(commands=["ban"])
-async def note(message: Message):
+async def ban(message: Message):
 	if Admins.get_or_none(id=message.chat.id):
 		await message.reply("Теперь это /mute")
 	else:
 		return
 @dp.message_handler(commands=["unban"])
-async def note(message: Message):
+async def unban(message: Message):
 	if Admins.get_or_none(id=message.chat.id):
 		await message.reply('Теперь это /unmute')
 	else:
@@ -51,33 +51,35 @@ async def help(message: Message):
 
 @dp.message_handler(commands=["profile"])
 async def profile(message: Message):
-    users = Users.select() 
-    user_id = message.from_user.id
-    last_msg = message.message_id
-    delay = Users.get(Users.id==message.chat.id).mute - datetime.now()
-    dur = str(delay).split(".")[0]
-    if dur.startswith("-"):
-        dur = None
-    username = message.from_user.username
-    user = Users.get_or_none(Users.id == message.chat.id)
-    tag_value = user.tag
-    if Admins.get_or_none(id=message.chat.id):
-        is_admin = True
-    else:
-        is_admin = False
-    user = Users.get_or_none(id=user_id)
-    if user:
-        warns = user.warns
-    first_name = message.from_user.first_name
-    last_name = message.from_user.last_name
-    full_name = first_name
-    if last_name:
-        full_name += f' {last_name}'
-    msgs_db = rdb.get("messages", [])
-    await message.reply(f'Debug your profile info:\nName: {full_name}\nID:<code>{user_id}</code>\nUsername: @{username}\nMute:<code>{dur}</code>\nWarns:{warns}\nAdmin_status:{is_admin}\nUse_tag:{tag_value}\nUsers: {len(users)}\nlastmsg chat: {last_msg}, msg_sent: {len(msgs_db)}')
+	users = Users.select() 
+	user_id = message.from_user.id
+	last_msg = message.message_id
+	delay = Users.get(Users.id==message.chat.id).mute - datetime.now()
+	dur = str(delay).split(".")[0]
+	if dur.startswith("-"):
+		dur = None
+	username = message.from_user.username
+	user = Users.get_or_none(Users.id == message.chat.id)
+	tag_value = user.tag
+	if Admins.get_or_none(id=message.chat.id):
+		is_admin = True
+	else:
+		is_admin = False
+	user = Users.get_or_none(id=user_id)
+	if user:
+		warns = user.warns
+	else:
+		warns = "None"
+	first_name = message.from_user.first_name
+	last_name = message.from_user.last_name
+	full_name = first_name
+	if last_name:
+		full_name += f' {last_name}'
+	msgs_db = rdb.get("messages", [])
+	await message.reply(f'Debug your profile info:\nName: {full_name}\nID:<code>{user_id}</code>\nUsername: @{username}\nMute:{dur}\nWarns:{warns}\nAdmin_status:{is_admin}\nUse_tag:{tag_value}\nUsers: {len(users)}\nlastmsg chat: {last_msg}, msg_sent: {len(msgs_db)}')
 
 @dp.message_handler(commands=['warns'])
-async def ping_telegram(message: types.Message):
+async def warns(message: types.Message):
     user_id = message.from_user.id
     user = Users.get_or_none(id=user_id)
     if user:
@@ -108,7 +110,7 @@ async def toggle_tagging(message: Message):
 			await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username")
 
 @dp.message_handler(commands=["start"])
-async def hello(message: Message):
+async def start(message: Message):
 	if not Users.select().where(Users.id==message.chat.id).exists():
 		Users.create(id=message.chat.id)
 	await message.reply("Салам, это эхо-бот от создателей ILNAZ GOD и Ким💖💖.\n\nТвои сообщения будут отправляться всем пользователям Echo.\n\nДля получения более подробной информации, пожалуйста, ознакомьтесь с правилами.\n\n(Это точно Echo-to-All?) Точнее если быть -- <b>Echo to Kim</b>❤️")
@@ -133,7 +135,7 @@ async def Send(message, keyboard, reply_data):
 		result.append({"chat_id": message.chat.id, "msg_id": message.message_id})
 	print(result)
 	msgs_db = rdb.get("messages", [])
-	msgs_db.append(result)
+	msgs_db.append(result) # type: ignore
 	rdb.set("messages", msgs_db)
 
 @dp.message_handler(content_types="any")
@@ -141,10 +143,33 @@ async def any(message: Message):
 	if message.content_type == "pinned_message":
 		return
 	if datetime.now() < Users.get(Users.id==message.chat.id).mute and not Admins.get_or_none(id=message.chat.id):
-		delay = Users.get(Users.id==message.chat.id).mute - datetime.now()
-		dur = str(delay).split(".")[0]
-		keyrules = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"RULES", url="https://telegra.ph/Rules-Echo-to-Kim-04-30"))
-		return await message.reply(f"Ты сможешь писать только через {dur}\nПожалуйста, соблюдайте правила.", reply_markup=keyrules)
+		delay = Users.get(Users.id == message.chat.id).mute - datetime.now()
+		duration = delay.total_seconds()
+
+		seconds = int(duration % 60)
+		minutes = int((duration // 60) % 60)
+		hours = int((duration // 3600) % 24)
+		days = int((duration // 86400) % 30.4375)  # средняя продолжительность месяца
+		months = int((duration // 2629800) % 12)  # средняя продолжительность года
+		years = int(duration // 31557600)  # продолжительность года
+
+		duration_string = ""
+		if years > 0:
+			duration_string += f"{years} год{'' if years == 1 else 'ов'} "
+		if months > 0:
+			duration_string += f"{months} месяц{'' if months == 1 else 'ев'} "
+		if days > 0:
+			duration_string += f"{days} д{'ень ' if days == 1 else 'ней '}"
+		if hours > 0:
+			duration_string += f"{hours} час{' ' if hours == 1 else 'ов '}"
+		if minutes > 0:
+			duration_string += f"{minutes} минут{' ' if minutes == 1 else ' '}"
+		if seconds > 0:
+			duration_string += f"{seconds} секунд{'а' if seconds == 1 else ''}"
+
+		keyrules = InlineKeyboardMarkup().add(InlineKeyboardButton(text="#IT'S MUTE", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+		return await message.reply(f"Ты сможешь писать только через {duration_string}\nПожалуйста, соблюдайте правила.", reply_markup=keyrules)
+	
 	if Users.get(Users.id==message.chat.id).tag:
 		full_name = message.from_user.full_name
 		username = message.from_user.username
@@ -161,21 +186,26 @@ async def any(message: Message):
 	Users.update(mute=datetime.now()).where(Users.id==message.chat.id).execute()
 	if message.reply_to_message:
 		reply_data = get_reply_data(message.chat.id, message.reply_to_message.message_id)
+	else:
+		reply_data = None
+
 	if message.text or message.caption:
 		if Users.get(Users.id==message.chat.id).last_msg == (message.text or message.caption):
 			return await message.reply("Ваше сообщение похоже на предыдущее.")
 		Users.update(last_msg=message.text or message.caption).where(Users.id==message.chat.id).execute()
+
 	if is_flood(message.chat.id):
 		Users.update(mute=datetime.now() + timedelta(hours=1)).where(Users.id==message.chat.id).execute()
 		minchgod = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
-		ims = await message.reply("Это флуд. Вы были отключены от чата на 1 час", reply_markup=minchgod)
+		ims = await message.reply("Это флуд.\nВы были отключены от чата на 1 час", reply_markup=minchgod)
 		await bot.pin_chat_message(ims.chat.id, ims.message_id)
 		user_id = message.from_user.id
 		message_id = message.reply_to_message.message_id
 		try:
-			await bot.send_message(-1001909107950, f"#FLOOD\n<b>ID:</b>{user_id}</b>")
+			await bot.send_message(chat_log, f"#FLOOD\n<b>ID:</b>{user_id}</b>")
 		except: pass
 		return
+
 	users = Users.select()
 	haha = await message.reply("Send...")
 	start_time = time.monotonic()
@@ -194,5 +224,3 @@ async def any(message: Message):
 		send_duration_str = f"{send_duration_min} минуту {send_duration_sec} секунд"
 
 	await haha.edit_text(f"Твоё сообщение было отправлено {len(users)} пользователям бота за <b>{send_duration_str}</b>", parse_mode="HTML")
-
-#	await haha.delete()
