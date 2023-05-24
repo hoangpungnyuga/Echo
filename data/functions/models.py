@@ -37,19 +37,19 @@ def get_reply_data(chat_id, msg_id):
 				return msg[1:]
 
 def get_reply_id(data, chat_id):
-	 if not data:
-	 	return
-	 for i in data:
-	 	if i["chat_id"] == chat_id:
-	 		return i["msg_id"]
+	if not data:
+		return
+	for i in data:
+		if i["chat_id"] == chat_id:
+			return i["msg_id"]
 
 def get_reply_sender(chat_id, msg_id):
 	for msg in rdb.get("messages", []):
-		for i in msg[1:]:
+		for i in msg[1:]: 
 			if i["chat_id"] == chat_id and i["msg_id"] == msg_id:
 				return msg[0]["sender_id"]
 
-def is_flood(chat_id):
-	control[chat_id].append(datetime.now())
-	times = filter(lambda time: datetime.now() - time < timedelta(seconds=5), control[chat_id])
-	return len(list(times)) > 7
+def is_flood(chat_id): # проверяем есть ли флуд
+	control[chat_id].append(datetime.now()) # запоминаем время
+	times = filter(lambda time: datetime.now() - time < timedelta(seconds=5), control[chat_id]) # проверяем время
+	return len(list(times)) > 5 # если больше 5 секунд, то флуд

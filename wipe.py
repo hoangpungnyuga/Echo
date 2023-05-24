@@ -56,20 +56,20 @@ async def process_wipe_confirmation(callback_query: types.CallbackQuery, state: 
 
 
 async def wipe(call: types.CallbackQuery, state: FSMContext, message: types.Message):
-    if call.data == 'confirm':
+    if call.data == 'confirm': # Если нажали да
         try:
-            delete_file("data/replies.json")
-            await create_file("data/replies.json")
+            delete_file("data/replies.json") # Удаляем файл
+            await create_file("data/replies.json") # Создаем файл
             await wipe_success(call)
-            await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+            await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id) # Удаляем сообщение
         except FileNotFoundError:
             await wipe_error(call)
-            print("File not found.")
-            await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
-    elif call.data == 'cancel':
+            print("File not found.") # Если файла нет то пишем в терминал
+            await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id) # Удаляем сообщение
+    elif call.data == 'cancel': # Если нажали нет
         try:
             await wipe_cancel(call)
-            await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+            await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id) # Удаляем сообщение
         except:
             pass
 
