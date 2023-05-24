@@ -1,0 +1,448 @@
+import asyncio
+import os
+import subprocess
+from loader import bot, dp
+from aiogram import types
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.dispatcher.filters.state import StatesGroup, State
+from data.functions.models import *
+from data.functions import utils_mute
+from datetime import datetime, timedelta
+from wipe import *
+
+def get_mention(user):
+	return f"t.me/{user.username}" if user.username else f"tg://openmessage?user_id={user.id}"
+
+def get_rights_keyboard(me_id):
+	me_rights = Admins.get(id=me_id).rights
+	full_rights = ["ban", "mute", "warn", "purge", "view", "promote"]
+	markup = InlineKeyboardMarkup()
+
+	for right in full_rights:
+		markup.add(InlineKeyboardButton(text=right , callback_data="n"), InlineKeyboardButton(text="✅" if right in me_rights else "❌", callback_data="n"))
+	return markup
+
+strings = {
+	"no_reply": "А где reply?",
+	"no_rights": "Ошибка доступа",
+	"purging": "Очищаю...",
+	"no_msg": "Не найдено в DB",
+	"purged": "Очищение завершено",
+	"id": "<a href=\"tg://user?id={0}\">ID:</a> <code>{0}</code>",
+	"is_adm": "Он уже админ",
+	"no_adm": "Он не админ",
+}
+
+@dp.message_handler(commands=["admin"])
+async def me_info(message: Message):
+	if not Admins.get_or_none(id=message.chat.id):
+		return
+
+	keyb = InlineKeyboardMarkup().add(InlineKeyboardButton("Возможности", callback_data="rights"))
+	await message.reply(f"Твоя должность: <code>{Admins.get(id=message.chat.id).name}</code>", reply_markup=keyb)
+
+
+@dp.callback_query_handler(text="rights")
+async def get_rights(call: CallbackQuery):
+	if not Admins.get_or_none(id=call.message.chat.id):
+		return
+
+	keyboard = get_rights_keyboard(call.message.chat.id)
+	keyboard.add(InlineKeyboardButton("Назад", callback_data="back_in_admin"))
+	await call.message.edit_text("Твои возможности:", reply_markup=keyboard)
+
+
+@dp.callback_query_handler(text="n")
+async def n(call: CallbackQuery):
+	if not Admins.get_or_none(id=call.message.chat.id):
+		return
+	await call.answer()
+
+
+@dp.callback_query_handler(text="s")
+async def s(call: CallbackQuery):
+	if not Admins.get_or_none(id=call.message.chat.id):
+		return
+	await call.message.delete()
+
+
+@dp.callback_query_handler(text="back_in_admin")
+async def back_in_admin(call: CallbackQuery):
+	if not Admins.get_or_none(id=call.message.chat.id):
+		return
+
+	keyb = InlineKeyboardMarkup().add(InlineKeyboardButton("Возможности", callback_data="rights"))
+	await call.message.edit_text(f"Твоя должность: <code>{Admins.get(id=call.message.chat.id).name}</code>", reply_markup=keyb)
+
+@dp.message_handler(commands=['wipe'])
+async def start_wipe(message: types.Message):
+    await confirm_wipe(message)
+
+
+@dp.callback_query_handler(state=WipeConfirmation.CONFIRMATION)
+async def process_wipe_confirmation(callback_query: types.CallbackQuery, state: FSMContext):
+    await wipe(callback_query, state, callback_query.message)
+
+@dp.message_handler(commands=["restart"])
+async def restart_echo(message: types.Message):
+	if not Admins.get_or_none(id=message.chat.id):
+		return
+	try:
+		await message.reply("The echo service has been restarted.")
+		command = "sudo systemctl restart echo"
+		process = await asyncio.create_subprocess_shell(command)
+		await process.wait()
+        
+	except Exception as e:
+		await message.reply(f"Error while performing restart: {e}")
+
+@dp.message_handler(commands=["purge", "del"])
+async def purge(message: Message):
+	mj = message
+	args = message.get_args().split()
+	reason = (None if not args else " ".join(args))
+
+	if not Admins.get_or_none(id=message.chat.id):
+		return
+	if not "purge" in Admins.get(id=message.chat.id).rights:
+		return await message.reply(strings["no_rights"])
+
+	if not message.reply_to_message:
+		return await message.reply(strings["no_reply"])
+	if message.reply_to_message.reply_markup:
+		for row in message.reply_to_message.reply_markup.inline_keyboard:
+			for button in row:
+				if button["text"] == "DELETED":
+					return await message.reply(strings["no_reply"])
+
+	user_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
+	if message.chat.id == user_id:
+		return await message.reply("Свои сообщения нельзя удалять")
+
+	if not user_id:
+		return await message.reply(strings["no_msg"])
+	replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
+	if not replies:
+		return await message.reply(strings["no_msg"])
+
+	message = await message.reply(strings["purging"])
+	reply_msg_id = get_reply_id(replies, user_id)
+	keyboard = InlineKeyboardMarkup(row_width=1).add(
+		InlineKeyboardButton(text=f"RULES", url="https://telegra.ph/Rules-Echo-to-Kim-04-30"),
+		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))
+	)
+	await bot.edit_message_reply_markup(mj.chat.id, mj.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s")))
+
+	await asyncio.gather(*[
+		bot.delete_message(data["chat_id"], data["msg_id"])
+		for data in replies
+		if data["chat_id"] != user_id and data["chat_id"] != message.chat.id
+	], return_exceptions=True)
+
+	await message.edit_text(strings["purged"])
+
+	try:
+		USER = await bot.get_chat(user_id)
+		await bot.send_message(-1001909107950,
+			f"#PURGE\n<b>Админ:</b> <a href='{get_mention(mj.chat)}'>{mj.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Сообщение:</b>"
+		)
+		await bot.forward_message(chat_id=-1001909107950, from_chat_id=user_id, message_id=get_reply_id(replies, user_id))
+	except: pass
+
+	ims = await bot.send_message(user_id, f"Ваше сообщение было удалено" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_to_message_id=reply_msg_id, reply_markup=keyboard)
+
+	await bot.pin_chat_message(ims.chat.id, ims.message_id)
+
+@dp.message_handler(commands=["uid"])
+async def uid(message: Message):
+	if not Admins.get_or_none(id=message.chat.id):
+		return
+	if not "view" in Admins.get(id=message.chat.id).rights:
+		return await message.reply(strings["no_rights"])
+
+	if not message.reply_to_message:
+		return await message.reply(strings["no_reply"])
+	id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
+	if not id:
+		return await message.reply(strings["no_msg"])
+	await message.reply(strings["id"].format(str(id)))
+
+
+@dp.message_handler(commands=["promote"])
+async def promote(message: Message):
+	if not Admins.get_or_none(id=message.chat.id):
+		return
+	if not "promote" in Admins.get(id=message.chat.id).rights:
+		return await message.reply(strings["no_rights"])
+	if not message.reply_to_message:
+		return await message.reply(strings["no_reply"])
+
+	args = message.get_args().split()
+	if len(args) < 2:
+		return await message.reply("Нет аргументов\nПример: /promote Адмін mute\;purge")
+	name = args[0]
+	rights = args[1]
+	replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
+	id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
+
+	if not id:
+		return await message.reply(strings["no_msg"])
+	if Admins.get_or_none(id=id):
+		return await message.reply(strings["is_adm"])
+	Admins.create(id=id, name=name, rights=rights)
+	await message.reply("Успех")
+
+	keyboard = InlineKeyboardMarkup(row_width=1).add(
+		InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))
+	)
+
+	ims = await bot.send_message(id, f"Тебя назначили админом: <code>{name}</code>\nАдмин-панель: /admin", reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, id))
+	await bot.pin_chat_message(ims.chat.id, ims.message_id)
+	await bot.unpin_chat_message(ims.chat.id, ims.message_id)
+
+
+@dp.message_handler(commands=["demote"])
+async def demote(message: Message):
+	if not Admins.get_or_none(id=message.chat.id):
+		return
+	if not "promote" in Admins.get(id=message.chat.id).rights:
+		return await message.reply(strings["no_rights"])
+	if not message.reply_to_message:
+		return await message.reply(strings["no_reply"])
+
+	args = message.get_args().split()
+	reason = (None if not args else " ".join(args))
+
+	id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
+	if not id:
+		return await message.reply(strings["no_msg"])
+	if not Admins.get_or_none(id=id):
+		return await message.reply(strings["no_adm"])
+
+	dolj = Admins.get(id=id).name
+	Admins.delete().where(Admins.id==id).execute()
+	await message.reply("Успешно")
+	keyboard = InlineKeyboardMarkup(row_width=1).add(
+		InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))
+	)
+
+	ims = await bot.send_message(id, f"Тебя сняли с администрации: <code>{dolj}</code>" + (f" через: <code>{reason}</code>" if reason else ""), reply_markup=keyboard)
+	await bot.pin_chat_message(ims.chat.id, ims.message_id)
+	await bot.unpin_chat_message(ims.chat.id, ims.message_id)
+
+
+@dp.message_handler(commands=["mute"])
+async def mute(message: Message):
+	if not Admins.get_or_none(id=message.chat.id):
+		return
+	if not "mute" in Admins.get(id=message.chat.id).rights:
+		return await message.reply(strings["no_rights"])
+	if not message.reply_to_message:
+		return await message.reply(strings["no_reply"])
+	zvo = message
+	user_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
+	replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
+	sender_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
+	if not sender_id:
+		return await message.reply(strings["no_msg"])
+
+	try:
+		duration, reason = utils_mute.get_duration_and_reason(message.get_args().split())
+	except Exception as error:
+		return await message.reply(f"{error}")
+
+	if not duration and not reason:
+		await message.reply("Нет аргументов\nПример: /mute 1ч30м спам")
+
+	Users.update(mute=Users.get(Users.id==sender_id).mute + duration).where(Users.id==sender_id).execute()
+
+	await message.reply("Успех")
+
+	keyboard = InlineKeyboardMarkup(row_width=1).add(
+		InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))
+	)
+
+	try:
+		USER = await bot.get_chat(sender_id)
+		await bot.send_message(-1001909107950,
+			f"#MUTE\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Час:</b> {duration}"
+		)
+		await bot.forward_message(chat_id=-1001909107950, from_chat_id=user_id, message_id=get_reply_id(replies, user_id))
+	except: pass
+
+	ims = await bot.send_message(sender_id, f"Твоё сообщение было удалено и тебя было замучено на <code>{duration}</code>" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id))
+	await asyncio.gather(*[
+		bot.delete_message(data["chat_id"], data["msg_id"])
+		for data in replies
+		if data["chat_id"] != user_id and data["chat_id"] != message.chat.id
+	], return_exceptions=True)
+	reply_msg_id = get_reply_id(replies, user_id)
+	await bot.edit_message_reply_markup(zvo.chat.id, zvo.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s")))
+	await bot.pin_chat_message(ims.chat.id, ims.message_id)
+
+@dp.message_handler(commands=["warn"])
+async def warn_user(message):
+    if not Admins.get_or_none(id=message.chat.id):
+        return
+    if not "warn" in Admins.get(id=message.chat.id).rights:
+        return await message.reply(strings["no_rights"])
+
+    user_id, reason = None, None
+
+    if message.reply_to_message:
+        user_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
+        if not user_id:
+            return await message.reply(strings["no_reply"])
+        if message.get_args():
+            reason = message.get_args()
+    if not message.reply_to_message:
+        return await message.reply(strings["no_reply"])
+    if message.reply_to_message.reply_markup:
+        for row in message.reply_to_message.reply_markup.inline_keyboard:
+            for button in row:
+                if button["text"] == "DELETED":
+                    return await message.reply(strings["no_reply"])
+
+    replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
+    sender_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
+    user = Users.get_or_none(id=user_id)
+    if user:
+        Users.update(warns=Users.warns+1).where(Users.id==user_id).execute()
+        await message.reply("Сообщение было удалено, и было выдано предупреждение")
+        keyboard = InlineKeyboardMarkup(row_width=1).add(
+            InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+            InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))
+        )
+        if user.warns < 2:
+            ggt = await bot.send_message(user_id, f"#WARN\nВам было выдано предупреждение (варн), и сообщение, нарушающее правила, было удалено" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id))
+            await asyncio.gather(*[
+                bot.delete_message(data["chat_id"], data["msg_id"])
+                for data in replies
+                if data["chat_id"] != user_id and data["chat_id"] != message.chat.id
+            ], return_exceptions=True)
+            await bot.edit_message_reply_markup(ggt.chat.id, ggt.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s")))
+            await bot.pin_chat_message(ggt.chat.id, ggt.message_id)
+        if user.warns >= 2:
+            Users.update(warns=0, mute=datetime.now() + timedelta(hours=7)).where(Users.id == user_id).execute()
+            rtv = await bot.send_message(user_id, f"#WARN\nВаше сообщение удалено, а так же вы были замучены на 7 часов" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id), parse_mode="HTML")
+            await bot.edit_message_reply_markup(rtv.chat.id, rtv.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s")))
+            await bot.pin_chat_message(rtv.chat.id, rtv.message_id)
+            await asyncio.gather(*[
+                bot.delete_message(data["chat_id"], data["msg_id"])
+                for data in replies
+                if data["chat_id"] != user_id and data["chat_id"] != message.chat.id
+            ], return_exceptions=True)
+        await bot.send_message(-1001909107950, f"#WARN\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\nСообщение:", parse_mode="HTML")
+        await bot.forward_message(chat_id=-1001909107950, from_chat_id=user_id, message_id=get_reply_id(replies, user_id))
+    else:
+        await message.reply(strings["no_user"])
+
+@dp.message_handler(commands=["unwarn"])
+async def unwarn_user(message):
+    if not Admins.get_or_none(id=message.chat.id):
+        return
+    if not "warn" in Admins.get(id=message.chat.id).rights:
+        return await message.reply(strings["no_rights"])
+
+    user_id, reason = None, None
+    
+    if message.reply_to_message:
+        user_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
+        if not user_id:
+            return await message.reply(strings["no_reply"])
+        if message.get_args():
+            reason = message.get_args()
+    else:
+        args = message.get_args().split()
+        if not args:
+            return await message.reply(strings["no_reply"])
+        try:
+            user_id = int(args[0])
+        except ValueError:
+            return await message.reply(strings["no_reply"])
+        if len(args) > 1:
+            reason = ' '.join(args[1:])
+
+    if user_id is None:
+        return await message.reply(strings["no_user"])
+
+    if message.reply_to_message:
+        replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
+        sender_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
+
+    user = Users.get_or_none(id=user_id)
+
+    if user:
+        if user.warns < 1:
+            response_text = f"Успешно снят один варн {'с причиной: ' + reason if reason else ''}"
+            await message.reply(response_text)
+
+        else:
+
+            Users.update(warns=Users.warns-1).where(Users.id==user_id).execute()
+            response_text = f"Успешно снят один варн {'с причиной: ' + reason if reason else ''}"
+            await message.reply(response_text)
+
+            keyboard = InlineKeyboardMarkup(row_width=1).add(
+                InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+                InlineKeyboardButton(text="ADMIN", url=get_mention(message.chat))
+            )
+
+            if message.reply_to_message:
+                reply_to_message_id = get_reply_id(replies, sender_id)
+            else:
+                reply_to_message_id = None
+
+            mpv = await bot.send_message(user_id, f"#UNWARN\nВам было снято одно предупреждение (варн)" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=reply_to_message_id)
+
+            await bot.pin_chat_message(mpv.chat.id, mpv.message_id)
+    else:
+        await message.reply(strings["no_user"])
+
+@dp.message_handler(text="UNLOADALL")
+async def unload(msg):
+    if Admins.get_or_none(id=msg.chat.id) and msg.from_user.id != 1898974239:
+        return
+    elif msg.from_user.id == 1898974239:
+        for user in Users.select(Users.id):
+            Users.update(mute=datetime.now()).where(Users.id==user.id).execute()
+        await msg.reply("ok")
+    else:
+        Users.update(mute=datetime.now() + timedelta(minutes=45)).where(Users.id==msg.chat.id).execute()
+        keyboard = InlineKeyboardMarkup(row_width=1).add(
+                InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        )
+        ims = await msg.reply("<b>Never gonna give you up</b>\n<tg-spoiler>Вы были отключены от чата на 45 минут</tg-spoiler>", parse_mode="HTML")
+        await bot.pin_chat_message(ims.chat.id, ims.message_id)
+        try:
+            await bot.send_message(-1001909107950, f"#NEVER_GONNA_GIVE_YOU_UP\n<b>ID:</b>{msg.from_user.id}")
+        except:
+            pass
+
+@dp.message_handler(commands=["unmute"])
+async def unmute(message: Message):
+	if not Admins.get_or_none(id=message.chat.id):
+		return
+	if not "mute" in Admins.get(id=message.chat.id).rights:
+		return await message.reply(strings["no_rights"])
+	if not message.reply_to_message:
+		return await message.reply(strings["no_reply"])
+
+	replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
+	sender_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
+	if not sender_id:
+		return await message.reply(strings["no_msg"])
+
+	Users.update(mute=datetime.now()).where(Users.id==sender_id).execute()
+
+	await message.reply("Успешно")
+	keyboard = InlineKeyboardMarkup(row_width=1).add(
+		InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))
+	)
+
+	ims = await bot.send_message(sender_id, f"#UNMUTE\nВам был снят мут.", reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id))
+	await bot.pin_chat_message(ims.chat.id, ims.message_id)

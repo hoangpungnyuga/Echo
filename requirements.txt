@@ -1,0 +1,4 @@
+aiogram
+peewee
+lightdb
+ping3
