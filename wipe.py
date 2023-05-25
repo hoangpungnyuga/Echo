@@ -35,9 +35,9 @@ async def restart_echo():
         await asyncio.wait_for(process.wait(), timeout=6)
     except asyncio.TimeoutError:
         # Если время ожидания превышено
-        raise RuntimeError("Restart timed out")
+        pass
     except Exception as e:
-        raise RuntimeError(f"Error while performing restart: {e}")
+        pass
 
 
 async def confirm_wipe(message: types.Message):
