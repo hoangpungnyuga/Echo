@@ -28,17 +28,13 @@ async def create_file(file_path):
     with open(file_path, 'w') as file:
         file.write("{\n    \"messages\": [\n    ]\n}")
 
-async def restart_echo():
-    try:
-        command = "sudo systemctl restart echo"
-        process = await asyncio.create_subprocess_shell(command)
-        await asyncio.wait_for(process.wait(), timeout=6)
-    except asyncio.TimeoutError:
-        # Если время ожидания превышено
-        pass
-    except Exception as e:
-        pass
-
+async def restarte(message: types.Message):
+	try:
+		command = "sudo systemctl restart echo"
+		process = await asyncio.create_subprocess_shell(command)
+		await process.wait()
+	except Exception as e:
+		pass
 
 async def confirm_wipe(message: types.Message):
     keyboard = types.InlineKeyboardMarkup()
