@@ -3,3 +3,6 @@ peewee
 lightdb
 ping3
 colorama
+pytz
+psutil
+hurry.filesize

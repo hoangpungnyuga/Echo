@@ -2,43 +2,49 @@ from loader import bot, dp, chat_log
 import asyncio
 import ping3
 import logging
+import psutil
 import time
+import pytz
+from hurry.filesize import size
 from aiogram import types
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from data.functions.models import *
 from aiogram.types.message_id import MessageId
-from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.utils.markdown import link
+from delayer import delayed_message
+from datetime import datetime, timedelta
 
 logging.basicConfig(level=logging.DEBUG)
-
-class States(StatesGroup):
-	setnick = State()
 
 def get_mention(user):
 	return f"t.me/{user.username}" if user.username else f"t.me/None"
 
 @dp.message_handler(commands=["rules"])
+@delayed_message(rate_limit=2, rate_limit_interval=5)
 async def rules(message: Message):
 	keyboard = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"RULES", url="https://telegra.ph/Rules-Echo-to-Kim-04-30"))
 	await message.reply(f"Правила этого бота\nТак же по поводу вопросов писать\n<b>>></b> @Sunzurai or @HateisEternal", reply_markup=keyboard)
 
 @dp.message_handler(commands=["users"])
+@delayed_message(rate_limit=2, rate_limit_interval=5)
 async def stats(message: Message):
 	users = Users.select()
 	await message.reply(f"👾 На данный момент сейчас <code>{len(users)}</code> пользователей в боте")
 
 @dp.message_handler(commands=["nick"])
+@delayed_message(rate_limit=2, rate_limit_interval=5)
 async def nick(message: Message):
 	await message.reply(f'Oops.. Это не юзабельно!😾 Вместо этого используй /tag')
 
 @dp.message_handler(commands=["ban"])
+@delayed_message(rate_limit=2, rate_limit_interval=5)
 async def ban(message: Message):
 	if Admins.get_or_none(id=message.chat.id):
 		await message.reply("Теперь это /mute")
 	else:
 		return
 @dp.message_handler(commands=["unban"])
+@delayed_message(rate_limit=2, rate_limit_interval=5)
 async def unban(message: Message):
 	if Admins.get_or_none(id=message.chat.id):
 		await message.reply('Теперь это /unmute')
@@ -46,11 +52,19 @@ async def unban(message: Message):
 		return
 
 @dp.message_handler(commands=["help"])
+@delayed_message(rate_limit=2, rate_limit_interval=5)
 async def help(message: Message):
-	await message.reply('<b>Я буду отправлять твои сообщения всем юзерам.</b>\n\n<b>⌖ Все что вас может интересовать</b>\n<b>></b> /start , /rules\n\n<b>⌖ Когда будет обновление бота?</b>\n<b>> <u>Завтра, если нет, то прочтите это сообщение еще раз!</u></b>', parse_mode="HTML")
+	await message.reply(
+			'<b>Я буду отправлять твои сообщения всем юзерам.</b>\n\n'
+			'<b>⌖ Все что вас может интересовать</b>\n'
+			'<b>></b> /start , /rules\n\n'
+			'<b>⌖ Когда будет обновление бота?</b>\n'
+			'<b>> <u>Завтра, если нет, то прочтите это сообщение еще раз!</u></b>', parse_mode="HTML")
 
 @dp.message_handler(commands=["profile"])
+@delayed_message(rate_limit=2, rate_limit_interval=9)
 async def profile(message: Message):
+	user = Users.get_or_none(Users.id == message.chat.id)
 	users = Users.select() 
 	user_id = message.from_user.id
 	last_msg = message.message_id
@@ -65,30 +79,35 @@ async def profile(message: Message):
 		is_admin = True
 	else:
 		is_admin = False
-	user = Users.get_or_none(id=user_id)
 	if user:
 		warns = user.warns
 	else:
 		warns = "None"
-	first_name = message.from_user.first_name
-	last_name = message.from_user.last_name
-	full_name = first_name
-	if last_name:
-		full_name += f' {last_name}'
+	full_name = message.from_user.full_name
 	msgs_db = rdb.get("messages", [])
-	await message.reply(f'Debug your profile info:\nName: {full_name}\nID:<code>{user_id}</code>\nUsername: @{username}\nMute:{dur}\nWarns:{warns}\nAdmin_status:{is_admin}\nUse_tag:{tag_value}\nUsers: {len(users)}\nlastmsg chat: {last_msg}, msg_sent: {len(msgs_db)}')
+	await message.reply("Debug your profile info:\n"
+				f"Name: {full_name}\n"
+				f"ID: <code>{user_id}</code>\n"
+				f"Username: @{username}\n"
+				f"Mute: {dur}\n"
+				f"Warns: {warns}\n"
+				f"Admin_status: {is_admin}\n"
+				f"Use_tag: {tag_value}\n"
+				f"Users: {len(users)}\n"
+				f"lastmsg chat: {last_msg}, msg_sent: {len(msgs_db)}")
 
 @dp.message_handler(commands=['warns'])
+@delayed_message(rate_limit=2, rate_limit_interval=5)
 async def warns(message: types.Message):
-    user_id = message.from_user.id
-    user = Users.get_or_none(id=user_id)
-    if user:
-        warns = user.warns
-        await message.reply(f'Warns: {warns}.\n3 варна - мут на 7 часов.')
-    else:
-        await message.reply("Looks like you didn't pass. please write /start")
+	user = Users.get_or_none(Users.id == message.chat.id)
+	if user:
+		warns = user.warns
+		await message.reply(f'Warns: {warns}.\n3 варна - мут на 7 часов.')
+	else:
+		await message.reply("Looks like you didn't pass. please write /start")
 
 @dp.message_handler(commands=['ping'])
+@delayed_message(rate_limit=2, rate_limit_interval=10)
 async def ping_telegram(message: types.Message):
 	pings = await message.reply("🤳PONG!")
 	dc1 = ping3.ping('149.154.175.53')
@@ -96,9 +115,77 @@ async def ping_telegram(message: types.Message):
 	dc3 = ping3.ping('149.154.175.100')
 	dc4 = ping3.ping('149.154.167.91')
 	dc5 = ping3.ping('91.108.56.130')
-	await pings.edit_text(f'🏓Пинг телеграм дата центров:\n\n\n🇺🇸DC1 MIA, Miami FL, USA:<code>{dc1}</code>.ms\n\n🇳🇱DC2 AMS, Amsterdam, NL:<code>{dc2}</code>.ms\n\n🇺🇸DC3* MIA, Miami FL, USA:<code>{dc3}</code>.ms\n\n🇳🇱DC4 AMS, Amsterdam, NL:<code>{dc4}</code>.ms\n\n🇸🇬DC5 SIN, Singapore, SG:<code>{dc5}</code>.ms', parse_mode="HTML")
+	await pings.edit_text(f'🏓Пинг телеграм дата центров:\n\n\n'
+		    				f'🇺🇸DC1 MIA, Miami FL, USA:<code>{dc1}</code>.ms\n\n'
+							f'🇳🇱DC2 AMS, Amsterdam, NL:<code>{dc2}</code>.ms\n\n'
+							f'🇺🇸DC3* MIA, Miami FL, USA:<code>{dc3}</code>.ms\n\n'
+							f'🇳🇱DC4 AMS, Amsterdam, NL:<code>{dc4}</code>.ms\n\n'
+							f'🇸🇬DC5 SIN, Singapore, SG:<code>{dc5}</code>.ms', parse_mode="HTML")
+
+@dp.message_handler(commands=["life"])
+@delayed_message(rate_limit=2, rate_limit_interval=5)
+async def get_system_stats(message: types.Message):
+	user = Users.get_or_none(Users.id == message.chat.id)
+	if user:
+		start_time = time.monotonic()
+		cpu_percent = psutil.cpu_percent()
+		mem_info = psutil.virtual_memory()
+		mem_percent = mem_info.percent
+		mem_free_percent = mem_info.available * 100 / mem_info.total
+		swap_info = psutil.swap_memory()
+		swap_percent = swap_info.percent
+		swap_free_percent = swap_info.free * 100 / swap_info.total
+		disk_usage = psutil.disk_usage('/')
+		disk_percent = disk_usage.percent
+		disk_free_percent = 100 - disk_percent
+		tz = pytz.timezone('Europe/Moscow') # Менять на своё усмотрение.
+		now_eest = datetime.now(tz)
+		format_date = now_eest.strftime("%Y-%m-%d %H:%M:%S")
+		end_time = time.monotonic()
+		vol_duration = end_time - start_time
+		if vol_duration < 1:
+				vol_duration_str = f"{int(vol_duration * 1000)} ms"
+		elif vol_duration < 60:
+			vol_duration_str = f"{int(vol_duration)} s"
+		else:
+			vol_duration_min = int(vol_duration // 60)
+			vol_duration_sec = int(vol_duration % 60)
+			vol_duration_str = f"{vol_duration_min} m {vol_duration_sec} s"
+
+		google = ping3.ping('8.8.8.8', timeout=1) or "failed:(" # DNS Google.
+		"""Если же это не работает, проверь - 'ping 8.8.8.8'
+		Если ответ - 'ping: socket: Operation not permitted'
+		Попробуй 'sudo chmod 4711 /usr/local/bin/ping3 && sudo chmod 4711 /usr/bin/ping'"""
+		response = f"Status machine life🕊\nCommand completed in {vol_duration_str}.\n"
+		response += f"Time ping <code>google.com</code> completed in <code>{google:.3f}</code>.ms\n"
+		if cpu_percent > 97:
+			response += f"‼️CPU: {cpu_percent}%‼️\n"
+		else:
+			response += f"CPU: {cpu_percent}%\n"
+
+		if mem_percent > 96:
+			response += f"‼️RAM: {mem_percent:.1f}% / Free: {mem_free_percent:.1f}%‼️\n"
+		else:
+			response += f"RAM: {mem_percent:.1f}% / Free: {mem_free_percent:.1f}%\n"
+
+		if not swap_percent == 0:
+			response += f"Swap: {swap_percent:.1f}% / Free: {swap_free_percent:.1f}%\n"
+		else:
+			pass
+
+		if disk_percent > 98:
+			response += f"‼️Disk Usage: {disk_percent:.1f}% / Free: {disk_free_percent:.1f}%‼️\n"
+		else:
+			response += f"Disk Usage: {disk_percent:.1f}% / Free: {disk_free_percent:.1f}%\n"
+
+		response += f"Current date and time in RU Donetsk: {format_date}"
+
+		await message.reply(response)
+	else:
+		return
 
 @dp.message_handler(commands=["tag"])
+@delayed_message(rate_limit=2, rate_limit_interval=3)
 async def toggle_tagging(message: Message):
 	user, created = Users.get_or_create(id=message.chat.id)
 	if user:
@@ -110,6 +197,7 @@ async def toggle_tagging(message: Message):
 			await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username")
 
 @dp.message_handler(commands=["start"])
+@delayed_message(rate_limit=2, rate_limit_interval=5)
 async def start(message: Message):
 	if not Users.select().where(Users.id==message.chat.id).exists():
 		Users.create(id=message.chat.id)

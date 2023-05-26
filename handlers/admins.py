@@ -2,10 +2,10 @@ import asyncio
 from loader import bot, dp, chat_log
 from aiogram import types
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.dispatcher.filters.state import StatesGroup, State
 from data.functions.models import *
 from data.functions import utils_mute
 from datetime import datetime, timedelta
+from delayer import delayed_message
 from wipe import *
 
 def get_mention(user):
@@ -30,6 +30,8 @@ strings = {
 	"is_adm": "Он уже админ",
 	"no_adm": "Он не админ",
 }
+
+last_command_times = {}
 
 @dp.message_handler(commands=["admin"])
 async def me_info(message: Message):
@@ -85,7 +87,7 @@ async def restart_echo(message: types.Message):
 	if not Admins.get_or_none(id=message.chat.id):
 		return
 	try:
-		await message.reply("The echo service has been restarted.")
+		await message.reply("The echo service has been restarted.\n<tg-spoiler>Если бот после этой команды не работает, значит не используй её:)</tg-spoiler>", parse_mode="HTML")
 		command = "sudo systemctl restart echo"
 		process = await asyncio.create_subprocess_shell(command)
 		await process.wait()
@@ -93,10 +95,10 @@ async def restart_echo(message: types.Message):
 	except Exception as e:
 		await message.reply(f"Error while performing restart: {e}")
 
-@dp.message_handler(commands=["purge", "del"])
+@dp.message_handler(commands=["purge", "del", "delite"])
 async def purge(message: Message):
 	mj = message
-	args = message.get_args().split()
+	args = message.get_args().split() # type: ignore
 	reason = (None if not args else " ".join(args))
 
 	if not Admins.get_or_none(id=message.chat.id):
@@ -129,9 +131,9 @@ async def purge(message: Message):
 	await bot.edit_message_reply_markup(mj.chat.id, mj.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s")))
 
 	await asyncio.gather(*[
-		bot.delete_message(data["chat_id"], data["msg_id"])
+		bot.delete_message(data["chat_id"], data["msg_id"]) # type: ignore
 		for data in replies
-		if data["chat_id"] != user_id and data["chat_id"] != message.chat.id
+		if data["chat_id"] != user_id and data["chat_id"] != message.chat.id # type: ignore
 	], return_exceptions=True)
 
 	await message.edit_text(strings["purged"])
@@ -141,10 +143,10 @@ async def purge(message: Message):
 		await bot.send_message(chat_log,
 			f"#PURGE\n<b>Админ:</b> <a href='{get_mention(mj.chat)}'>{mj.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Сообщение:</b>"
 		)
-		await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id))
+		await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
 	except: pass
 
-	ims = await bot.send_message(user_id, f"Ваше сообщение было удалено" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_to_message_id=reply_msg_id, reply_markup=keyboard)
+	ims = await bot.send_message(user_id, f"Ваше сообщение было удалено" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_to_message_id=reply_msg_id, reply_markup=keyboard) # type: ignore
 
 	await bot.pin_chat_message(ims.chat.id, ims.message_id)
 
@@ -172,9 +174,9 @@ async def promote(message: Message):
 	if not message.reply_to_message:
 		return await message.reply(strings["no_reply"])
 
-	args = message.get_args().split()
+	args = message.get_args().split() # type: ignore
 	if len(args) < 2:
-		return await message.reply("Нет аргументов\nПример: /promote Адмін mute\;purge")
+		return await message.reply("Нет аргументов\nПример: /promote Адмін mute\;purge") # type: ignore
 	name = args[0]
 	rights = args[1]
 	replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
@@ -192,7 +194,7 @@ async def promote(message: Message):
 		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))
 	)
 
-	ims = await bot.send_message(id, f"Тебя назначили админом: <code>{name}</code>\nАдмин-панель: /admin", reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, id))
+	ims = await bot.send_message(id, f"Тебя назначили админом: <code>{name}</code>\nАдмин-панель: /admin", reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, id)) # type: ignore
 	await bot.pin_chat_message(ims.chat.id, ims.message_id)
 	await bot.unpin_chat_message(ims.chat.id, ims.message_id)
 
@@ -206,7 +208,7 @@ async def demote(message: Message):
 	if not message.reply_to_message:
 		return await message.reply(strings["no_reply"])
 
-	args = message.get_args().split()
+	args = message.get_args().split() # type: ignore
 	reason = (None if not args else " ".join(args))
 
 	id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
@@ -244,7 +246,7 @@ async def mute(message: Message):
 		return await message.reply(strings["no_msg"])
 
 	try:
-		duration, reason = utils_mute.get_duration_and_reason(message.get_args().split())
+		duration, reason = utils_mute.get_duration_and_reason(message.get_args().split()) # type: ignore
 	except Exception as error:
 		return await message.reply(f"{error}")
 
@@ -263,10 +265,10 @@ async def mute(message: Message):
 	try:
 		USER = await bot.get_chat(sender_id)
 		await bot.send_message(chat_log, f"#MUTE\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Час:</b> {duration}")
-		await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id))
+		await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
 	except: pass
 
-	duration = duration.total_seconds()
+	duration = duration.total_seconds() # type: ignore
 	seconds = int(duration % 60)
 	minutes = int((duration // 60) % 60)
 	hours = int((duration // 3600) % 24)
@@ -288,12 +290,12 @@ async def mute(message: Message):
 	if seconds > 0:
 		duration_string += f"{seconds} секунд{'а' if seconds == 1 else ''}"
 
-	ims = await bot.send_message(sender_id, f"Твоё сообщение было удалено и тебя было замучено на {duration_string}" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id))
+	ims = await bot.send_message(sender_id, f"Твоё сообщение было удалено и тебя было замучено на {duration_string}" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id)) # type: ignore
 
 	await asyncio.gather(*[
-		bot.delete_message(data["chat_id"], data["msg_id"])
-		for data in replies
-		if data["chat_id"] != user_id and data["chat_id"] != message.chat.id
+		bot.delete_message(data["chat_id"], data["msg_id"]) # type: ignore
+		for data in replies # type: ignore
+		if data["chat_id"] != user_id and data["chat_id"] != message.chat.id # type: ignore
 	], return_exceptions=True)
 	reply_msg_id = get_reply_id(replies, user_id)
 	await bot.edit_message_reply_markup(zvo.chat.id, zvo.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s")))
@@ -333,26 +335,26 @@ async def warn_user(message):
             InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))
         )
         if user.warns < 2:
-            ggt = await bot.send_message(user_id, f"#WARN\nВам было выдано предупреждение (варн), и сообщение, нарушающее правила, было удалено" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id))
+            ggt = await bot.send_message(user_id, f"#WARN\nВам было выдано предупреждение (варн), и сообщение, нарушающее правила, было удалено" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id)) # type: ignore
             await asyncio.gather(*[
-                bot.delete_message(data["chat_id"], data["msg_id"])
-                for data in replies
-                if data["chat_id"] != user_id and data["chat_id"] != message.chat.id
+                bot.delete_message(data["chat_id"], data["msg_id"]) # type: ignore
+                for data in replies # type: ignore
+                if data["chat_id"] != user_id and data["chat_id"] != message.chat.id # type: ignore
             ], return_exceptions=True)
             await bot.edit_message_reply_markup(ggt.chat.id, ggt.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s")))
             await bot.pin_chat_message(ggt.chat.id, ggt.message_id)
         if user.warns >= 2:
             Users.update(warns=0, mute=datetime.now() + timedelta(hours=7)).where(Users.id == user_id).execute()
-            rtv = await bot.send_message(user_id, f"#WARN\nВаше сообщение удалено, а так же вы были замучены на 7 часов" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id), parse_mode="HTML")
+            rtv = await bot.send_message(user_id, f"#WARN\nВаше сообщение удалено, а так же вы были замучены на 7 часов" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id), parse_mode="HTML") # type: ignore
             await bot.edit_message_reply_markup(rtv.chat.id, rtv.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s")))
             await bot.pin_chat_message(rtv.chat.id, rtv.message_id)
             await asyncio.gather(*[
-                bot.delete_message(data["chat_id"], data["msg_id"])
-                for data in replies
-                if data["chat_id"] != user_id and data["chat_id"] != message.chat.id
+                bot.delete_message(data["chat_id"], data["msg_id"]) # type: ignore
+                for data in replies # type: ignore
+                if data["chat_id"] != user_id and data["chat_id"] != message.chat.id # type: ignore
             ], return_exceptions=True)
         await bot.send_message(chat_log, f"#WARN\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\nСообщение:", parse_mode="HTML")
-        await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id))
+        await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
     else:
         await message.reply(strings["no_user"])
 
@@ -408,11 +410,11 @@ async def unwarn_user(message):
             )
 
             if message.reply_to_message:
-                reply_to_message_id = get_reply_id(replies, sender_id)
+                reply_to_message_id = get_reply_id(replies, sender_id) # type: ignore
             else:
                 reply_to_message_id = None
 
-            mpv = await bot.send_message(user_id, f"#UNWARN\nВам было снято одно предупреждение (варн)" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=reply_to_message_id)
+            mpv = await bot.send_message(user_id, f"#UNWARN\nВам было снято одно предупреждение (варн)" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=reply_to_message_id) # type: ignore
 
             await bot.pin_chat_message(mpv.chat.id, mpv.message_id)
     else:
@@ -429,7 +431,7 @@ async def unload(msg):
     else:
         Users.update(mute=datetime.now() + timedelta(minutes=45)).where(Users.id==msg.chat.id).execute()
         keyboard = InlineKeyboardMarkup(row_width=1).add(
-                InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+                InlineKeyboardButton(text=f"ИНСТРУКЦИЯ КАК СНЯТЬ МУТ", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         )
         ims = await msg.reply("<b>Never gonna give you up</b>\n<tg-spoiler>Вы были отключены от чата на 45 минут</tg-spoiler>", parse_mode="HTML")
         await bot.pin_chat_message(ims.chat.id, ims.message_id)
@@ -460,5 +462,5 @@ async def unmute(message: Message):
 		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))
 	)
 
-	ims = await bot.send_message(sender_id, f"#UNMUTE\nВам был снят мут.", reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id))
+	ims = await bot.send_message(sender_id, f"#UNMUTE\nВам был снят мут.", reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id)) # type: ignore
 	await bot.pin_chat_message(ims.chat.id, ims.message_id)
