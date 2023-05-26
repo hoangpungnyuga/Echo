@@ -51,7 +51,7 @@ async def wipe(call: types.CallbackQuery, state: FSMContext, message: types.Mess
             await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id) # Удаляем сообщение
         except FileNotFoundError:
             await wipe_error(call)
-            print("File not found.") # Если файла нет то пишем в терминал
+            print("File not found.") # Если файла нет, то пишем в терминал
             await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id) # Удаляем сообщение
     elif call.data == 'cancel': # Если нажали нет
         try:
