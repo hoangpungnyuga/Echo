@@ -1,4 +1,5 @@
 import asyncio
+import pytz
 from loader import bot, dp, chat_log
 from aiogram import types
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
@@ -7,6 +8,8 @@ from data.functions import utils_mute
 from datetime import datetime, timedelta
 from delayer import delayed_message
 from wipe import *
+
+log_file = "app.log"
 
 def get_mention(user):
 	return f"t.me/{user.username}" if user.username else f"tg://openmessage?user_id={user.id}"
@@ -100,6 +103,105 @@ async def restart_echo(message: types.Message):
         
 	except Exception as e:
 		await message.reply(f"Error while performing restart: {e}")
+
+@dp.message_handler(commands=["pin"])
+async def pin_message(message: types.Message):
+    if not Admins.get_or_none(id=message.chat.id):
+        return
+    if not "ban" in Admins.get(id=message.chat.id).rights:
+        return await message.reply(strings["no_rights"])
+    if not message.reply_to_message:
+        return await message.reply("Вы должны ответить на сообщение, которое хотите закрепить у всех.")
+
+    replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
+
+    if message.from_user.username:
+        meuser = message.from_user.username
+    else:
+        meuser = None
+
+    log_written = False
+
+    # Получение текущего времени в часовом поясе Moscow
+    timezone = pytz.timezone("Europe/Moscow")
+    current_time = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
+
+    for data in replies: # type: ignore
+        if data["chat_id"] and data["chat_id"] != message.chat.id: # type: ignore
+            user_id = data["chat_id"] # type: ignore
+            message_id = data["msg_id"] # type: ignore
+            try:
+                await bot.pin_chat_message(user_id, message_id) # type: ignore
+
+                if not log_written:
+                    # Запись в файл лога
+                    log_message = (f'{current_time} - #PIN | admin_id: {message.chat.id}, @{meuser}, | text: `{message.reply_to_message.text}`\n\n')
+
+                    with open(log_file, "a") as file:
+                        file.write(log_message)
+                    log_written = True
+
+            except Exception as e:
+                print(f"Не удалось закрепить сообщение с ID {message_id} для пользователя с ID {user_id}. Ошибка: {e}")
+
+    try:
+        await bot.pin_chat_message(message.chat.id, message.reply_to_message.message_id)
+
+        if not log_written:
+            # Запись в файл лога
+            log_message = (f'{current_time} - #PIN | admin_id: {message.chat.id}, @{meuser}, | text: `{message.reply_to_message.text}`\n\n')
+
+            with open(log_file, "a") as file:
+                file.write(log_message)
+            log_written = True
+
+    except Exception as e:
+        print(f"Не удалось закрепить сообщение у вас. Ошибка: {e}")
+
+    await message.answer("Сообщение успешно закреплено у всех.")
+
+@dp.message_handler(commands=["unpin"])
+async def unpin_message(message: types.Message):
+    if not Admins.get_or_none(id=message.chat.id):
+        return
+    if not "ban" in Admins.get(id=message.chat.id).rights:
+        return await message.reply(strings["no_rights"])
+    if not message.reply_to_message:
+        return await message.reply("Вы должны ответить на сообщение, которое хотите разкрепить.")
+
+    replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
+
+    if message.from_user.username:
+        meuser = message.from_user.username
+    else:
+        meuser = None
+
+    log_written = False
+
+    # Получение текущего времени в часовом поясе Moscow
+    timezone = pytz.timezone("Europe/Moscow")
+    current_time = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
+
+    for data in replies: # type: ignore
+        if data["chat_id"]: # type: ignore
+            user_id = data["chat_id"] # type: ignore
+            message_id = data["msg_id"] # type: ignore
+            try:
+                await bot.unpin_chat_message(user_id, message_id) # type: ignore
+
+                if not log_written:
+                    # Запись в файл лога
+                    log_message = (f'{current_time} - #UNPIN | admin_id: {message.chat.id}, @{meuser}, | text: `{message.reply_to_message.text}`\n\n')
+
+                    with open(log_file, "a") as file:
+                        file.write(log_message)
+                    log_written = True
+
+            except Exception as e:
+                print(f"Не удалось разкрепить сообщение с ID {message_id} для пользователя с ID {user_id}. Ошибка: {e}")
+
+    await message.answer("Сообщение успешно откреплено у всех.")
+
 
 @dp.message_handler(commands=["purge", "del", "delite"])
 async def purge(message: Message):
