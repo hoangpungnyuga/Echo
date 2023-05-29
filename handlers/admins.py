@@ -17,7 +17,7 @@ def get_rights_keyboard(me_id):
 	markup = InlineKeyboardMarkup()
 
 	for right in full_rights:
-		markup.add(InlineKeyboardButton(text=right , callback_data="n"), InlineKeyboardButton(text="✅" if right in me_rights else "❌", callback_data="n"))
+		markup.add(InlineKeyboardButton(text=right , callback_data="n"), InlineKeyboardButton(text="✅" if right in me_rights else "❌", callback_data="n")) # type: ignore
 	return markup
 
 strings = {
@@ -38,9 +38,14 @@ async def me_info(message: Message):
 	if not Admins.get_or_none(id=message.chat.id):
 		return
 
-	keyb = InlineKeyboardMarkup().add(InlineKeyboardButton("Возможности", callback_data="rights"))
+	keyb = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Возможности", callback_data="rights")) # type: ignore
+	keyb.add(InlineKeyboardButton(text="Удалить", callback_data="del1")) # type: ignore
+	
 	await message.reply(f"Твоя должность: <code>{Admins.get(id=message.chat.id).name}</code>", reply_markup=keyb)
 
+@dp.callback_query_handler(text="del1")
+async def del1(call: CallbackQuery):
+	await call.message.delete()
 
 @dp.callback_query_handler(text="rights")
 async def get_rights(call: CallbackQuery):
@@ -48,7 +53,7 @@ async def get_rights(call: CallbackQuery):
 		return
 
 	keyboard = get_rights_keyboard(call.message.chat.id)
-	keyboard.add(InlineKeyboardButton("Назад", callback_data="back_in_admin"))
+	keyboard.add(InlineKeyboardButton("Назад", callback_data="back_in_admin")) # type: ignore
 	await call.message.edit_text("Твои возможности:", reply_markup=keyboard)
 
 
@@ -56,7 +61,7 @@ async def get_rights(call: CallbackQuery):
 async def n(call: CallbackQuery):
 	if not Admins.get_or_none(id=call.message.chat.id):
 		return
-	await call.answer()
+	await call.answer(text="Пздц, оказывается это не кликабельно...", show_alert=True)
 
 
 @dp.callback_query_handler(text="s")
@@ -71,7 +76,8 @@ async def back_in_admin(call: CallbackQuery):
 	if not Admins.get_or_none(id=call.message.chat.id):
 		return
 
-	keyb = InlineKeyboardMarkup().add(InlineKeyboardButton("Возможности", callback_data="rights"))
+	keyb = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Возможности", callback_data="rights")) # type: ignore
+	keyb.add(InlineKeyboardButton(text="Удалить", callback_data="del1")) # type: ignore
 	await call.message.edit_text(f"Твоя должность: <code>{Admins.get(id=call.message.chat.id).name}</code>", reply_markup=keyb)
 
 @dp.message_handler(commands=['wipe'])
@@ -125,10 +131,10 @@ async def purge(message: Message):
 	message = await message.reply(strings["purging"])
 	reply_msg_id = get_reply_id(replies, user_id)
 	keyboard = InlineKeyboardMarkup(row_width=1).add(
-		InlineKeyboardButton(text=f"RULES", url="https://telegra.ph/Rules-Echo-to-Kim-04-30"),
-		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))
+		InlineKeyboardButton(text=f"RULES", url="https://telegra.ph/Rules-Echo-to-Kim-04-30"), # type: ignore
+		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat)) # type: ignore
 	)
-	await bot.edit_message_reply_markup(mj.chat.id, mj.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s")))
+	await bot.edit_message_reply_markup(mj.chat.id, mj.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
 
 	await asyncio.gather(*[
 		bot.delete_message(data["chat_id"], data["msg_id"]) # type: ignore
@@ -190,8 +196,8 @@ async def promote(message: Message):
 	await message.reply("Успех")
 
 	keyboard = InlineKeyboardMarkup(row_width=1).add(
-		InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
-		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))
+		InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"), # type: ignore
+		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat)) # type: ignore
 	)
 
 	ims = await bot.send_message(id, f"Тебя назначили админом: <code>{name}</code>\nАдмин-панель: /admin", reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, id)) # type: ignore
@@ -221,8 +227,8 @@ async def demote(message: Message):
 	Admins.delete().where(Admins.id==id).execute()
 	await message.reply("Успешно")
 	keyboard = InlineKeyboardMarkup(row_width=1).add(
-		InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
-		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))
+		InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"), # type: ignore
+		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat)) # type: ignore
 	)
 
 	ims = await bot.send_message(id, f"Тебя сняли с администрации: <code>{dolj}</code>" + (f" через: <code>{reason}</code>" if reason else ""), reply_markup=keyboard)
@@ -258,8 +264,8 @@ async def mute(message: Message):
 	await message.reply("Успех")
 
 	keyboard = InlineKeyboardMarkup(row_width=1).add(
-		InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
-		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))
+		InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"), # type: ignore
+		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat)) # type: ignore
 	)
 
 	try:
@@ -298,7 +304,7 @@ async def mute(message: Message):
 		if data["chat_id"] != user_id and data["chat_id"] != message.chat.id # type: ignore
 	], return_exceptions=True)
 	reply_msg_id = get_reply_id(replies, user_id)
-	await bot.edit_message_reply_markup(zvo.chat.id, zvo.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s")))
+	await bot.edit_message_reply_markup(zvo.chat.id, zvo.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
 	await bot.pin_chat_message(ims.chat.id, ims.message_id)
 
 @dp.message_handler(commands=["warn"])
@@ -331,8 +337,8 @@ async def warn_user(message):
         Users.update(warns=Users.warns+1).where(Users.id==user_id).execute()
         await message.reply("Сообщение было удалено, и было выдано предупреждение")
         keyboard = InlineKeyboardMarkup(row_width=1).add(
-            InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
-            InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))
+            InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"), # type: ignore
+            InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat)) # type: ignore
         )
         if user.warns < 2:
             ggt = await bot.send_message(user_id, f"#WARN\nВам было выдано предупреждение (варн), и сообщение, нарушающее правила, было удалено" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id)) # type: ignore
@@ -341,12 +347,12 @@ async def warn_user(message):
                 for data in replies # type: ignore
                 if data["chat_id"] != user_id and data["chat_id"] != message.chat.id # type: ignore
             ], return_exceptions=True)
-            await bot.edit_message_reply_markup(ggt.chat.id, ggt.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s")))
+            await bot.edit_message_reply_markup(ggt.chat.id, ggt.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
             await bot.pin_chat_message(ggt.chat.id, ggt.message_id)
         if user.warns >= 2:
             Users.update(warns=0, mute=datetime.now() + timedelta(hours=7)).where(Users.id == user_id).execute()
             rtv = await bot.send_message(user_id, f"#WARN\nВаше сообщение удалено, а так же вы были замучены на 7 часов" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id), parse_mode="HTML") # type: ignore
-            await bot.edit_message_reply_markup(rtv.chat.id, rtv.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s")))
+            await bot.edit_message_reply_markup(rtv.chat.id, rtv.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
             await bot.pin_chat_message(rtv.chat.id, rtv.message_id)
             await asyncio.gather(*[
                 bot.delete_message(data["chat_id"], data["msg_id"]) # type: ignore
@@ -405,8 +411,8 @@ async def unwarn_user(message):
             await message.reply(response_text)
 
             keyboard = InlineKeyboardMarkup(row_width=1).add(
-                InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
-                InlineKeyboardButton(text="ADMIN", url=get_mention(message.chat))
+                InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"), # type: ignore
+                InlineKeyboardButton(text="ADMIN", url=get_mention(message.chat)) # type: ignore
             )
 
             if message.reply_to_message:
@@ -431,7 +437,7 @@ async def unload(msg):
     else:
         Users.update(mute=datetime.now() + timedelta(minutes=45)).where(Users.id==msg.chat.id).execute()
         keyboard = InlineKeyboardMarkup(row_width=1).add(
-                InlineKeyboardButton(text=f"ИНСТРУКЦИЯ КАК СНЯТЬ МУТ", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+                InlineKeyboardButton(text=f"ИНСТРУКЦИЯ КАК СНЯТЬ МУТ", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ") # type: ignore
         )
         ims = await msg.reply("<b>Never gonna give you up</b>\n<tg-spoiler>Вы были отключены от чата на 45 минут</tg-spoiler>", parse_mode="HTML")
         await bot.pin_chat_message(ims.chat.id, ims.message_id)
@@ -446,21 +452,46 @@ async def unmute(message: Message):
 		return
 	if not "mute" in Admins.get(id=message.chat.id).rights:
 		return await message.reply(strings["no_rights"])
-	if not message.reply_to_message:
-		return await message.reply(strings["no_reply"])
 
-	replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
-	sender_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
-	if not sender_id:
-		return await message.reply(strings["no_msg"])
+	# Разбиваем сообщение на аргументы
+	args = message.get_args().split() # type: ignore
+	reason = " ".join(args[1:]) if len(args) > 1 else None
 
-	Users.update(mute=datetime.now()).where(Users.id==sender_id).execute()
+	if message.reply_to_message:
+		# Вариант с ответом на сообщение
+		replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
+		sender_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
+		if not sender_id:
+			return await message.reply(strings["no_msg"])
 
-	await message.reply("Успешно")
-	keyboard = InlineKeyboardMarkup(row_width=1).add(
-		InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
-		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))
-	)
+		Users.update(mute=datetime.now()).where(Users.id == sender_id).execute()
 
-	ims = await bot.send_message(sender_id, f"#UNMUTE\nВам был снят мут.", reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id)) # type: ignore
-	await bot.pin_chat_message(ims.chat.id, ims.message_id)
+		await message.reply("Успешно")
+		keyboard = InlineKeyboardMarkup(row_width=1).add(
+			InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"), # type: ignore
+			InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat)) # type: ignore
+		)
+
+		ims = await bot.send_message(
+			sender_id,
+			f"#UNMUTE\nВам был снят мут.{' Причина: ' + reason if reason else ''}",
+			reply_markup=keyboard,
+			reply_to_message_id=get_reply_id(replies, sender_id) # type: ignore
+		)
+		await bot.pin_chat_message(ims.chat.id, ims.message_id)
+	else:
+		# Вариант с использованием ID пользователя
+		if len(args) < 1:
+			return await message.reply("Вы должны указать ID пользователя для размута.\nЛибо по reply")
+
+		keyboard = InlineKeyboardMarkup(row_width=1).add(
+			InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"), # type: ignore
+			InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat)) # type: ignore
+		)
+
+		user_id = args[0]
+		Users.update(mute=datetime.now()).where(Users.id == user_id).execute()
+
+		await message.reply("Успешно")
+		why	= await bot.send_message(user_id, f"#UNMUTE\nВам был снят мут.{' Причина: ' + reason if reason else ''}", reply_markup=keyboard)
+		await bot.pin_chat_message(why.chat.id, why.message_id)

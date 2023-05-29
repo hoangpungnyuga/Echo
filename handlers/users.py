@@ -22,7 +22,7 @@ def get_mention(user):
 @dp.message_handler(commands=["rules"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
 async def rules(message: Message):
-	keyboard = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"RULES", url="https://telegra.ph/Rules-Echo-to-Kim-04-30"))
+	keyboard = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"RULES", url="https://telegra.ph/Rules-Echo-to-Kim-04-30")) # type: ignore
 	await message.reply(f"Правила этого бота\nТак же по поводу вопросов писать\n<b>>></b> @Sunzurai or @HateisEternal", reply_markup=keyboard)
 
 @dp.message_handler(commands=["users"])
@@ -152,33 +152,35 @@ async def get_system_stats(message: types.Message):
 			vol_duration_sec = int(vol_duration % 60)
 			vol_duration_str = f"{vol_duration_min} m {vol_duration_sec} s"
 
-		google = ping3.ping('8.8.8.8', timeout=1) or "failed:(" # DNS Google.
+		google = ping3.ping('8.8.8.8', unit="ms", timeout=1) or "failed:(" # DNS Google.
 		"""Если же это не работает, проверь - 'ping 8.8.8.8'
 		Если ответ - 'ping: socket: Operation not permitted'
 		Попробуй 'sudo chmod 4711 /usr/local/bin/ping3 && sudo chmod 4711 /usr/bin/ping'"""
-		response = f"Status machine life🕊\nCommand completed in {vol_duration_str}.\n"
+
+		response = f"Status machine life🕊\nCommand completed in {vol_duration_str}.\n\n"
+
 		response += f"Time ping <code>google.com</code> completed in <code>{google:.3f}</code>.ms\n"
 		if cpu_percent > 97:
 			response += f"‼️CPU: {cpu_percent}%‼️\n"
 		else:
-			response += f"CPU: {cpu_percent}%\n"
+			response += f">CPU: {cpu_percent}%\n"
 
 		if mem_percent > 96:
 			response += f"‼️RAM: {mem_percent:.1f}% / Free: {mem_free_percent:.1f}%‼️\n"
 		else:
-			response += f"RAM: {mem_percent:.1f}% / Free: {mem_free_percent:.1f}%\n"
+			response += f">RAM: {mem_percent:.1f}% / Free: {mem_free_percent:.1f}%\n"
 
 		if not swap_percent == 0:
-			response += f"Swap: {swap_percent:.1f}% / Free: {swap_free_percent:.1f}%\n"
+			response += f">Swap: {swap_percent:.1f}% / Free: {swap_free_percent:.1f}%\n"
 		else:
 			pass
 
 		if disk_percent > 98:
 			response += f"‼️Disk Usage: {disk_percent:.1f}% / Free: {disk_free_percent:.1f}%‼️\n"
 		else:
-			response += f"Disk Usage: {disk_percent:.1f}% / Free: {disk_free_percent:.1f}%\n"
+			response += f">Disk Usage: {disk_percent:.1f}% / Free: {disk_free_percent:.1f}%\n"
 
-		response += f"Current date and time in RU Donetsk: {format_date}"
+		response += f"`Current date and time in RU Donetsk: {format_date}"
 
 		await message.reply(response)
 	else:
@@ -255,18 +257,18 @@ async def any(message: Message):
 		if seconds > 0:
 			duration_string += f"{seconds} секунд{'а' if seconds == 1 else ''}"
 
-		keyrules = InlineKeyboardMarkup().add(InlineKeyboardButton(text="#IT'S MUTE", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+		keyrules = InlineKeyboardMarkup().add(InlineKeyboardButton(text="#IT'S MUTE", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
 		return await message.reply(f"Ты сможешь писать только через {duration_string}\nПожалуйста, соблюдайте правила.", reply_markup=keyrules)
 	
 	if Users.get(Users.id==message.chat.id).tag:
 		full_name = message.from_user.full_name
 		username = message.from_user.username
 		keyboard = InlineKeyboardMarkup().add(
-		InlineKeyboardButton(f"{full_name}", url=f"t.me/{username}" if username else f"t.me/None")
+		InlineKeyboardButton(f"{full_name}", url=f"t.me/{username}" if username else f"t.me/None") # type: ignore
 		)
 		if Admins.get_or_none(id=message.chat.id):
 			keyboard.add(
-			InlineKeyboardButton("ADMIN", url=f"t.me/{username}" if username else f"t.me/None")
+			InlineKeyboardButton("ADMIN", url=f"t.me/{username}" if username else f"t.me/None") # type: ignore
 			)
 	else:
 		keyboard = None
@@ -284,7 +286,7 @@ async def any(message: Message):
 
 	if is_flood(message.chat.id):
 		Users.update(mute=datetime.now() + timedelta(hours=1)).where(Users.id==message.chat.id).execute()
-		minchgod = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+		minchgod = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
 		ims = await message.reply("Это флуд.\nВы были отключены от чата на 1 час", reply_markup=minchgod)
 		await bot.pin_chat_message(ims.chat.id, ims.message_id)
 		user_id = message.from_user.id
