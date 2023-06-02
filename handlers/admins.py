@@ -113,6 +113,8 @@ async def pin_message(message: types.Message):
     if not message.reply_to_message:
         return await message.reply("Вы должны ответить на сообщение, которое хотите закрепить у всех.")
 
+    rrs = await message.answer("Жди, закрепляю..")
+
     replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
 
     if message.from_user.username:
@@ -158,7 +160,7 @@ async def pin_message(message: types.Message):
     except Exception as e:
         print(f"Не удалось закрепить сообщение у вас. Ошибка: {e}")
 
-    await message.answer("Сообщение успешно закреплено у всех.")
+    await rrs.edit_text("Сообщение успешно закреплено у всех.")
 
 @dp.message_handler(commands=["unpin"])
 async def unpin_message(message: types.Message):
@@ -170,6 +172,8 @@ async def unpin_message(message: types.Message):
         return await message.reply("Вы должны ответить на сообщение, которое хотите разкрепить.")
 
     replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
+
+    sayguy = await message.answer("Жди, открепляю...")
 
     if message.from_user.username:
         meuser = message.from_user.username
@@ -200,7 +204,7 @@ async def unpin_message(message: types.Message):
             except Exception as e:
                 print(f"Не удалось разкрепить сообщение с ID {message_id} для пользователя с ID {user_id}. Ошибка: {e}")
 
-    await message.answer("Сообщение успешно откреплено у всех.")
+    await sayguy.edit_text("Сообщение успешно откреплено у всех.")
 
 
 @dp.message_handler(commands=["purge", "del", "delite"])

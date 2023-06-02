@@ -299,7 +299,6 @@ async def any(message: Message):
 	users = Users.select()
 	haha = await message.reply("Send...")
 	start_time = time.monotonic()
-
 	await Send(message, keyboard, reply_data if message.reply_to_message else None)
 	end_time = time.monotonic()
 	send_duration = end_time - start_time
