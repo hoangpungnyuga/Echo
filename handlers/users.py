@@ -5,6 +5,7 @@ import logging
 import psutil
 import time
 import pytz
+from peewee import DoesNotExist
 from hurry.filesize import size
 from aiogram import types
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
@@ -176,14 +177,20 @@ async def get_system_stats(message: types.Message):
 @dp.message_handler(commands=["tag"])
 @delayed_message(rate_limit=2, rate_limit_interval=3)
 async def toggle_tagging(message: Message):
-	user = Users.get_or_create(id=message.chat.id)
-	if user:
-		if user.tag:
-			Users.update(tag=False).where(Users.id==message.chat.id).execute()
-			await message.reply("Ваши следующие сообщения <b>не</b> будут помечены вашим ником")
-		else:
-			Users.update(tag=True).where(Users.id==message.chat.id).execute()
-			await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username")
+    try:
+        user = Users.get(Users.id == message.chat.id)
+        if user:
+            if user.tag:
+                Users.update(tag=False).where(Users.id == message.chat.id).execute()
+                await message.reply("Ваши следующие сообщения <b>не</b> будут помечены вашим ником")
+            else:
+                Users.update(tag=True).where(Users.id == message.chat.id).execute()
+                await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username")
+    except DoesNotExist:
+        # Создайте новую запись для пользователя, если она не существует
+        Users.create(id=message.chat.id, tag=True)
+        await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username\n<tg-spoiler>Вы были зарегистрированы в боте.</tg-spoiler>", parse_mode="HTML")
+
 
 @dp.message_handler(commands=["start"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
