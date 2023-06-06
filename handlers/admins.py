@@ -1,7 +1,8 @@
 import asyncio
 import pytz
-from loader import bot, dp, chat_log
+from loader import bot, dp, chat_log, support
 from aiogram import types
+from pytz import timezone
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from data.functions.models import *
 from data.functions import utils_mute
@@ -25,7 +26,7 @@ def get_rights_keyboard(me_id):
 
 strings = {
 	"no_reply": "А где reply?",
-	"no_rights": "Ошибка доступа",
+	"no_rights": "Нет доступа к этому выполнению",
 	"purging": "Очищаю...",
 	"no_msg": "Не найдено в DB",
 	"purged": "Очищение завершено",
@@ -96,7 +97,7 @@ async def restart_echo(message: types.Message):
 	if not Admins.get_or_none(id=message.chat.id):
 		return
 	try:
-		await message.reply("The echo service has been restarted.\n<tg-spoiler>Если бот после этой команды не работает, значит не используй её:)</tg-spoiler>", parse_mode="HTML")
+		await message.reply(f"The echo service has been restarted.\n<tg-spoiler>Если бот после этой команды не работает, значит не используй её:)\nЛибо пиши {support}</tg-spoiler>", parse_mode="HTML")
 		command = "sudo systemctl restart echo"
 		process = await asyncio.create_subprocess_shell(command)
 		await process.wait()
@@ -120,7 +121,7 @@ async def pin_message(message: types.Message):
     if message.from_user.username:
         meuser = message.from_user.username
     else:
-        meuser = None
+        meuser = "undefined"
 
     log_written = False
 
@@ -158,7 +159,7 @@ async def pin_message(message: types.Message):
             log_written = True
 
     except Exception as e:
-        print(f"Не удалось закрепить сообщение у вас. Ошибка: {e}")
+        print(f"Не удалось закрепить сообщение у вас {message.chat.id}. Ошибка: {e}")
 
     await rrs.edit_text("Сообщение успешно закреплено у всех.")
 
@@ -363,9 +364,16 @@ async def mute(message: Message):
 		return await message.reply(f"{error}")
 
 	if not duration and not reason:
-		await message.reply("Нет аргументов\nПример: /mute 1ч30м спам")
+		await message.reply("Нет аргументов\nПример: /mute 1ч30м спам")
 
-	Users.update(mute=Users.get(Users.id==sender_id).mute + duration).where(Users.id==sender_id).execute()
+	duration_seconds = duration.total_seconds() # type: ignore
+	if duration_seconds < 30:
+		"""Если пользователь написал /mute 29s, либо меньше, то это станет 1 минутой"""
+		duration = timedelta(minutes=1)
+	else:
+		duration = timedelta(seconds=duration_seconds)
+
+	Users.update(mute=datetime.now() + duration).where(Users.id == message.chat.id).execute()
 
 	await message.reply("Успех")
 
@@ -376,7 +384,7 @@ async def mute(message: Message):
 
 	try:
 		USER = await bot.get_chat(sender_id)
-		await bot.send_message(chat_log, f"#MUTE\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Час:</b> {duration}")
+		await bot.send_message(chat_log, f"#MUTE\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Время:</b> {duration}")
 		await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
 	except: pass
 
@@ -387,6 +395,10 @@ async def mute(message: Message):
 	days = int((duration // 86400) % 30.4375)  # средняя продолжительность месяца
 	months = int((duration // 2629800) % 12)  # средняя продолжительность года
 	years = int(duration // 31557600)  # продолжительность года
+
+	moscow_tz = timezone('Europe/Moscow')
+	unmute_time = datetime.now(moscow_tz) + timedelta(seconds=duration)
+	unmute_string = unmute_time.strftime("%d-%m-%Y %H:%M")
 
 	duration_string = ""
 	if years > 0:
@@ -402,7 +414,8 @@ async def mute(message: Message):
 	if seconds > 0:
 		duration_string += f"{seconds} секунд{'а' if seconds == 1 else ''}"
 
-	ims = await bot.send_message(sender_id, f"Твоё сообщение было удалено и тебя было замучено на {duration_string}" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id)) # type: ignore
+	ims = await bot.send_message(sender_id, f"#MUTE\nТвоё сообщение[{sender_id}] было удалено и тебя было замучено на {duration_string}" + (f" по причине: '<code>{reason}</code>'" if reason else "") + (f"\nUtil unmute: {unmute_string}"), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id))  # type: ignore
+	await bot.pin_chat_message(ims.chat.id, ims.message_id)
 
 	await asyncio.gather(*[
 		bot.delete_message(data["chat_id"], data["msg_id"]) # type: ignore
@@ -411,7 +424,6 @@ async def mute(message: Message):
 	], return_exceptions=True)
 	reply_msg_id = get_reply_id(replies, user_id)
 	await bot.edit_message_reply_markup(zvo.chat.id, zvo.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
-	await bot.pin_chat_message(ims.chat.id, ims.message_id)
 
 @dp.message_handler(commands=["warn"])
 async def warn_user(message):
@@ -554,50 +566,57 @@ async def unload(msg):
 
 @dp.message_handler(commands=["unmute"])
 async def unmute(message: Message):
-	if not Admins.get_or_none(id=message.chat.id):
-		return
-	if not "mute" in Admins.get(id=message.chat.id).rights:
-		return await message.reply(strings["no_rights"])
+    if not Admins.get_or_none(id=message.chat.id):
+        return
+    if "mute" not in Admins.get(id=message.chat.id).rights:
+        return await message.reply(strings["no_rights"])
 
-	# Разбиваем сообщение на аргументы
-	args = message.get_args().split() # type: ignore
-	reason = " ".join(args[1:]) if len(args) > 1 else None
+    if message.reply_to_message:
+        # Вариант с ответом на сообщение
+        args = message.get_args().split() # type: ignore
+        reason = " ".join(args) if args else None
+        replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
+        sender_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
+        if not sender_id:
+            return await message.reply(strings["no_msg"])
 
-	if message.reply_to_message:
-		# Вариант с ответом на сообщение
-		replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
-		sender_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
-		if not sender_id:
-			return await message.reply(strings["no_msg"])
+        Users.update(mute=datetime.now()).where(Users.id == sender_id).execute()
 
-		Users.update(mute=datetime.now()).where(Users.id == sender_id).execute()
+        await message.reply("Успешно")
+        keyboard = InlineKeyboardMarkup(row_width=1).add(
+            InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"),  # type: ignore
+            InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))  # type: ignore
+        )
 
-		await message.reply("Успешно")
-		keyboard = InlineKeyboardMarkup(row_width=1).add(
-			InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"), # type: ignore
-			InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat)) # type: ignore
-		)
+        ims = await bot.send_message(
+            sender_id,
+            f"#UNMUTE\nВам был снят мут{' по причине: ' + f'`<code>{reason}</code>`' if reason else '.'}",
+            reply_markup=keyboard,
+            parse_mode="HTML",
+            reply_to_message_id=get_reply_id(replies, sender_id)  # type: ignore
+        )
+        await bot.pin_chat_message(ims.chat.id, ims.message_id)
+    else:
+        # Вариант с использованием ID пользователя
+		# Разбиваем сообщение на аргументы
+        args = message.get_args().split() # type: ignore
+        reason = " ".join(args[1:]) if len(args) > 1 else None
+        if len(args) < 1:
+            return await message.reply("Вы должны указать ID пользователя для размута.\nЛибо по reply")
 
-		ims = await bot.send_message(
-			sender_id,
-			f"#UNMUTE\nВам был снят мут.{' Причина: ' + reason if reason else ''}",
-			reply_markup=keyboard,
-			reply_to_message_id=get_reply_id(replies, sender_id) # type: ignore
-		)
-		await bot.pin_chat_message(ims.chat.id, ims.message_id)
-	else:
-		# Вариант с использованием ID пользователя
-		if len(args) < 1:
-			return await message.reply("Вы должны указать ID пользователя для размута.\nЛибо по reply")
+        user_id = args[0]
+        Users.update(mute=datetime.now()).where(Users.id == user_id).execute()
 
-		keyboard = InlineKeyboardMarkup(row_width=1).add(
-			InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"), # type: ignore
-			InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat)) # type: ignore
-		)
+        await message.reply("Успешно")
+        keyboard = InlineKeyboardMarkup(row_width=1).add(
+            InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"),  # type: ignore
+            InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))  # type: ignore
+        )
 
-		user_id = args[0]
-		Users.update(mute=datetime.now()).where(Users.id == user_id).execute()
-
-		await message.reply("Успешно")
-		why	= await bot.send_message(user_id, f"#UNMUTE\nВам был снят мут.{' Причина: ' + reason if reason else ''}", reply_markup=keyboard)
-		await bot.pin_chat_message(why.chat.id, why.message_id)
+        why = await bot.send_message(
+            user_id,
+            f"#UNMUTE\nВам был снят мут{' по причине: ' + f'`<code>{reason}</code>`' if reason else '.'}",
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        await bot.pin_chat_message(why.chat.id, why.message_id)

@@ -1,15 +1,17 @@
 import re
 import datetime
 
-PATTERN = re.compile(r"(?P<value>\d+)(?P<modifier>[дчмсdhms])")
-LINE_PATTERN = re.compile(r"^(\d+[дчмсdhms]){1,}$")
+PATTERN = re.compile(r"(?P<value>\d+)(?P<modifier>[дгчмсdyhms])")
+LINE_PATTERN = re.compile(r"^(\d+[дгчмсdyhms]){1,}$")
 
 MODIFIERS = {
 	"д": datetime.timedelta(days=1),
+	"г": datetime.timedelta(days=365),
 	"ч": datetime.timedelta(hours=1),
 	"м": datetime.timedelta(minutes=1),
 	"с": datetime.timedelta(seconds=1),
     "d": datetime.timedelta(days=1),
+	"y": datetime.timedelta(days=365),
     "h": datetime.timedelta(hours=1),
     "m": datetime.timedelta(minutes=1),
     "s": datetime.timedelta(seconds=1)

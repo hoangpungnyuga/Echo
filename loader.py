@@ -15,4 +15,6 @@ bot = Bot(token=config["aiogram"]["bot_token"], parse_mode=ParseMode.HTML)
 dp = Dispatcher(bot=bot, loop=loop, storage=storage)
 chat_log = config["aiogram"]["chat_log"]
 
-logging.basicConfig(filename="logs.log", level=logging.INFO)
+support = "@Sunzurai or @HateisEternal" # Меняйте на свой по усмотрению
+
+logging.basicConfig(filename="logs.log", level=logging.ERROR)

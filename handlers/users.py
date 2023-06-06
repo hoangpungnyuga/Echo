@@ -1,4 +1,4 @@
-from loader import bot, dp, chat_log
+from loader import bot, dp, chat_log, support
 import asyncio
 import ping3
 import logging
@@ -13,7 +13,6 @@ from aiogram.types.message_id import MessageId
 from aiogram.utils.markdown import link
 from delayer import delayed_message
 from datetime import datetime, timedelta
-
 logging.basicConfig(level=logging.DEBUG)
 
 def get_mention(user):
@@ -23,7 +22,7 @@ def get_mention(user):
 @delayed_message(rate_limit=2, rate_limit_interval=5)
 async def rules(message: Message):
 	keyboard = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"RULES", url="https://telegra.ph/Rules-Echo-to-Kim-04-30")) # type: ignore
-	await message.reply(f"Правила этого бота\nТак же по поводу вопросов писать\n<b>>></b> @Sunzurai or @HateisEternal", reply_markup=keyboard)
+	await message.reply(f"Правила этого бота\nТак же по поводу вопросов писать\n<b>>></b> {support}", reply_markup=keyboard)
 
 @dp.message_handler(commands=["users"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
@@ -59,40 +58,32 @@ async def help(message: Message):
 			'<b>⌖ Все что вас может интересовать</b>\n'
 			'<b>></b> /start , /rules\n\n'
 			'<b>⌖ Когда будет обновление бота?</b>\n'
-			'<b>> <u>Завтра, если нет, то прочтите это сообщение еще раз!</u></b>', parse_mode="HTML")
+			'<b>><u> Завтра, если нет, то прочтите это сообщение еще раз!</u></b>', parse_mode="HTML")
 
 @dp.message_handler(commands=["profile"])
-@delayed_message(rate_limit=2, rate_limit_interval=9)
+@delayed_message(rate_limit=2, rate_limit_interval=5)
 async def profile(message: Message):
 	user = Users.get_or_none(Users.id == message.chat.id)
-	users = Users.select() 
-	user_id = message.from_user.id
+	users = Users.select()
 	last_msg = message.message_id
+	username = f'@{message.from_user.username}' if message.from_user.username else "undefined"
 	delay = Users.get(Users.id==message.chat.id).mute - datetime.now()
 	dur = str(delay).split(".")[0]
 	if dur.startswith("-"):
-		dur = None
-	username = message.from_user.username
-	user = Users.get_or_none(Users.id == message.chat.id)
-	tag_value = user.tag
+		dur = "undefined"
 	if Admins.get_or_none(id=message.chat.id):
 		is_admin = True
 	else:
 		is_admin = False
-	if user:
-		warns = user.warns
-	else:
-		warns = "None"
-	full_name = message.from_user.full_name
 	msgs_db = rdb.get("messages", [])
 	await message.reply("Debug your profile info:\n"
-				f"Name: {full_name}\n"
-				f"ID: <code>{user_id}</code>\n"
-				f"Username: @{username}\n"
+				f"Name: {message.from_user.full_name}\n"
+				f"ID: <code>{message.from_user.id}</code>\n"
+				f"Username: {username}\n"
 				f"Mute: {dur}\n"
-				f"Warns: {warns}\n"
+				f"Warns: {user.warns}\n"
 				f"Admin_status: {is_admin}\n"
-				f"Use_tag: {tag_value}\n"
+				f"Use_tag: {user.tag}\n"
 				f"Users: {len(users)}\n"
 				f"lastmsg chat: {last_msg}, msg_sent: {len(msgs_db)}")
 
@@ -100,11 +91,7 @@ async def profile(message: Message):
 @delayed_message(rate_limit=2, rate_limit_interval=5)
 async def warns(message: types.Message):
 	user = Users.get_or_none(Users.id == message.chat.id)
-	if user:
-		warns = user.warns
-		await message.reply(f'Warns: {warns}.\n3 варна - мут на 7 часов.')
-	else:
-		await message.reply("Looks like you didn't pass. please write /start")
+	await message.reply(f'Warns: {user.warns}.\n3 варна - мут на 7 часов.')
 
 @dp.message_handler(commands=['ping'])
 @delayed_message(rate_limit=2, rate_limit_interval=10)
@@ -116,7 +103,7 @@ async def ping_telegram(message: types.Message):
 	dc4 = ping3.ping('149.154.167.91')
 	dc5 = ping3.ping('91.108.56.130')
 	await pings.edit_text(f'🏓Пинг телеграм дата центров:\n\n\n'
-		    				f'🇺🇸DC1 MIA, Miami FL, USA:<code>{dc1}</code>.ms\n\n'
+							f'🇺🇸DC1 MIA, Miami FL, USA:<code>{dc1}</code>.ms\n\n'
 							f'🇳🇱DC2 AMS, Amsterdam, NL:<code>{dc2}</code>.ms\n\n'
 							f'🇺🇸DC3* MIA, Miami FL, USA:<code>{dc3}</code>.ms\n\n'
 							f'🇳🇱DC4 AMS, Amsterdam, NL:<code>{dc4}</code>.ms\n\n'
@@ -159,7 +146,7 @@ async def get_system_stats(message: types.Message):
 
 		response = f"Status machine life🕊\nCommand completed in {vol_duration_str}.\n\n"
 
-		response += f"Time ping <code>google.com</code> completed in <code>{google:.3f}</code>.ms\n"
+		response += f"Time ping <code>8.8.8.8</code> completed in <code>{google:.3f}</code>.ms\n"
 		if cpu_percent > 97:
 			response += f"‼️CPU: {cpu_percent}%‼️\n"
 		else:
@@ -189,7 +176,7 @@ async def get_system_stats(message: types.Message):
 @dp.message_handler(commands=["tag"])
 @delayed_message(rate_limit=2, rate_limit_interval=3)
 async def toggle_tagging(message: Message):
-	user, created = Users.get_or_create(id=message.chat.id)
+	user = Users.get_or_create(id=message.chat.id)
 	if user:
 		if user.tag:
 			Users.update(tag=False).where(Users.id==message.chat.id).execute()
@@ -203,7 +190,10 @@ async def toggle_tagging(message: Message):
 async def start(message: Message):
 	if not Users.select().where(Users.id==message.chat.id).exists():
 		Users.create(id=message.chat.id)
-	await message.reply("Салам, это эхо-бот от создателей ILNAZ GOD и Ким💖💖.\n\nТвои сообщения будут отправляться всем пользователям Echo.\n\nДля получения более подробной информации, пожалуйста, ознакомьтесь с правилами.\n\n(Это точно Echo-to-All?) Точнее если быть -- <b>Echo to Kim</b>❤️")
+	await message.reply('Салам, это эхо-бот от создателей ILNAZ GOD и Ким💖💖.\n\n'
+			'Твои сообщения будут отправляться всем пользователям Echo.\n\n'
+			'Для получения более подробной информации, пожалуйста, ознакомьтесь с правилами.\n\n'
+			'(Это точно Echo-to-All?) Точнее если быть -- <b>Echo to Kim</b>❤️)')
 
 async def send(message, *args, **kwargs):
 	return (await message.copy_to(*args, **kwargs)), args[0]
@@ -232,7 +222,7 @@ async def Send(message, keyboard, reply_data):
 async def any(message: Message):
 	if message.content_type == "pinned_message":
 		return
-	if datetime.now() < Users.get(Users.id==message.chat.id).mute and not Admins.get_or_none(id=message.chat.id):
+	if datetime.now() < Users.get(Users.id==message.chat.id).mute:
 		delay = Users.get(Users.id == message.chat.id).mute - datetime.now()
 		duration = delay.total_seconds()
 
@@ -258,8 +248,8 @@ async def any(message: Message):
 			duration_string += f"{seconds} секунд{'а' if seconds == 1 else ''}"
 
 		keyrules = InlineKeyboardMarkup().add(InlineKeyboardButton(text="#IT'S MUTE", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
-		return await message.reply(f"Ты сможешь писать только через {duration_string}\nПожалуйста, соблюдайте правила.", reply_markup=keyrules)
-	
+		return await message.reply(f"Ты сможешь писать только через {duration_string}", reply_markup=keyrules)
+
 	if Users.get(Users.id==message.chat.id).tag:
 		full_name = message.from_user.full_name
 		username = message.from_user.username
