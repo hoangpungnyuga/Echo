@@ -5,14 +5,14 @@ import logging
 import psutil
 import time
 import pytz
+import traceback
 from peewee import DoesNotExist
-from hurry.filesize import size
 from aiogram import types
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from data.functions.models import *
 from aiogram.types.message_id import MessageId
-from aiogram.utils.markdown import link
 from delayer import delayed_message
+from screl import UQ
 from datetime import datetime, timedelta
 logging.basicConfig(level=logging.DEBUG)
 
@@ -98,81 +98,95 @@ async def warns(message: types.Message):
 @delayed_message(rate_limit=2, rate_limit_interval=10)
 async def ping_telegram(message: types.Message):
 	pings = await message.reply("🤳PONG!")
-	dc1 = ping3.ping('149.154.175.53')
-	dc2 = ping3.ping('149.154.167.51')
-	dc3 = ping3.ping('149.154.175.100')
-	dc4 = ping3.ping('149.154.167.91')
-	dc5 = ping3.ping('91.108.56.130')
-	await pings.edit_text(f'🏓Пинг телеграм дата центров:\n\n\n'
+	try:
+		dc1 = ping3.ping('149.154.175.53')
+		dc2 = ping3.ping('149.154.167.51')
+		dc3 = ping3.ping('149.154.175.100')
+		dc4 = ping3.ping('149.154.167.91')
+		dc5 = ping3.ping('91.108.56.130')
+		await pings.edit_text(f'🏓Пинг телеграм дата центров:\n\n\n'
 							f'🇺🇸DC1 MIA, Miami FL, USA:<code>{dc1}</code>.ms\n\n'
 							f'🇳🇱DC2 AMS, Amsterdam, NL:<code>{dc2}</code>.ms\n\n'
 							f'🇺🇸DC3* MIA, Miami FL, USA:<code>{dc3}</code>.ms\n\n'
 							f'🇳🇱DC4 AMS, Amsterdam, NL:<code>{dc4}</code>.ms\n\n'
 							f'🇸🇬DC5 SIN, Singapore, SG:<code>{dc5}</code>.ms', parse_mode="HTML")
+	except PermissionError as e:
+		if isinstance(e, PermissionError) and str(e) == "[Errno 13] Permission denied":
+			await pings.edit_text(f"Ошибка:(\nЭто - Permission denied\nПопробуй /fix\nЕсли же вы видите это, пишите {support}")
+		else:
+			error_message = traceback.format_exc()  # Получение полного сообщения об ошибке
+			await pings.edit_text(f"Ошибка:(\n{error_message}\nПопробуй /fix\nЕсли же вы видите это, пишите {support}")
 
 @dp.message_handler(commands=["life"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
 async def get_system_stats(message: types.Message):
-	user = Users.get_or_none(Users.id == message.chat.id)
-	if user:
-		start_time = time.monotonic()
-		cpu_percent = psutil.cpu_percent()
-		mem_info = psutil.virtual_memory()
-		mem_percent = mem_info.percent
-		mem_free_percent = mem_info.available * 100 / mem_info.total
-		swap_info = psutil.swap_memory()
-		swap_percent = swap_info.percent
-		swap_free_percent = swap_info.free * 100 / swap_info.total
-		disk_usage = psutil.disk_usage('/')
-		disk_percent = disk_usage.percent
-		disk_free_percent = 100 - disk_percent
-		tz = pytz.timezone('Europe/Moscow') # Менять на своё усмотрение.
-		now_eest = datetime.now(tz)
-		format_date = now_eest.strftime("%Y-%m-%d %H:%M:%S")
-		end_time = time.monotonic()
-		vol_duration = end_time - start_time
-		if vol_duration < 1:
-				vol_duration_str = f"{int(vol_duration * 1000)} ms"
-		elif vol_duration < 60:
-			vol_duration_str = f"{int(vol_duration)} s"
+	hey = await message.reply("I'm counting..")
+	await asyncio.sleep(1)
+	try:
+		user = Users.get_or_none(Users.id == message.chat.id)
+		if user:
+			start_time = time.monotonic()
+			cpu_percent = psutil.cpu_percent()
+			mem_info = psutil.virtual_memory()
+			mem_percent = mem_info.percent
+			mem_free_percent = mem_info.available * 100 / mem_info.total
+			swap_info = psutil.swap_memory()
+			swap_percent = swap_info.percent
+			swap_free_percent = swap_info.free * 100 / swap_info.total
+			disk_usage = psutil.disk_usage('/')
+			disk_percent = disk_usage.percent
+			disk_free_percent = 100 - disk_percent
+			tz = pytz.timezone('Europe/Moscow') # Менять на своё усмотрение.
+			now_eest = datetime.now(tz)
+			format_date = now_eest.strftime("%Y-%m-%d %H:%M:%S")
+			end_time = time.monotonic()
+			vol_duration = end_time - start_time
+			if vol_duration < 1:
+					vol_duration_str = f"{int(vol_duration * 1000)} ms"
+			elif vol_duration < 60:
+				vol_duration_str = f"{int(vol_duration)} s"
+			else:
+				vol_duration_min = int(vol_duration // 60)
+				vol_duration_sec = int(vol_duration % 60)
+				vol_duration_str = f"{vol_duration_min} m {vol_duration_sec} s"
+
+			google = ping3.ping('8.8.8.8', unit="ms", timeout=1) or "failed:(" # DNS Google.
+			"""Если же это не работает, проверь - 'ping 8.8.8.8'
+			Если ответ - 'ping: socket: Operation not permitted'
+			Попробуй ' sudo sysctl -w net.ipv4.ping_group_range='0 2147483647' '"""
+
+			response = f"Status machine life🕊\nCommand completed in {vol_duration_str}.\n\n"
+
+			response += f"Time ping <code>8.8.8.8</code> completed in <code>{google:.3f}</code>.ms\n"
+			if cpu_percent > 97:
+				response += f"‼️CPU: {cpu_percent}%‼️\n"
+			else:
+				response += f">CPU: {cpu_percent}%\n"
+
+			if mem_percent > 96:
+				response += f"‼️RAM: {mem_percent:.1f}% / Free: {mem_free_percent:.1f}%‼️\n"
+			else:
+				response += f">RAM: {mem_percent:.1f}% / Free: {mem_free_percent:.1f}%\n"
+
+			if not swap_percent == 0:
+				response += f">Swap: {swap_percent:.1f}% / Free: {swap_free_percent:.1f}%\n"
+			else:
+				pass
+
+			if disk_percent > 98:
+				response += f"‼️Disk Usage: {disk_percent:.1f}% / Free: {disk_free_percent:.1f}%‼️\n"
+			else:
+				response += f">Disk Usage: {disk_percent:.1f}% / Free: {disk_free_percent:.1f}%\n"
+
+			response += f"`Current date and time in RU Donetsk: {format_date}"
+			DS = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Удалить", callback_data="del")) # type: ignore
+			await hey.edit_text(response, reply_markup=DS)
+	except PermissionError as e:
+		if isinstance(e, PermissionError) and str(e) == "[Errno 13] Permission denied":
+			await hey.edit_text(f"Ошибка:(\nЭто - Permission denied\nПопробуй /fix\nЕсли же вы видите это, пишите {support}")
 		else:
-			vol_duration_min = int(vol_duration // 60)
-			vol_duration_sec = int(vol_duration % 60)
-			vol_duration_str = f"{vol_duration_min} m {vol_duration_sec} s"
-
-		google = ping3.ping('8.8.8.8', unit="ms", timeout=1) or "failed:(" # DNS Google.
-		"""Если же это не работает, проверь - 'ping 8.8.8.8'
-		Если ответ - 'ping: socket: Operation not permitted'
-		Попробуй 'sudo chmod 4711 /usr/local/bin/ping3 && sudo chmod 4711 /usr/bin/ping'"""
-
-		response = f"Status machine life🕊\nCommand completed in {vol_duration_str}.\n\n"
-
-		response += f"Time ping <code>8.8.8.8</code> completed in <code>{google:.3f}</code>.ms\n"
-		if cpu_percent > 97:
-			response += f"‼️CPU: {cpu_percent}%‼️\n"
-		else:
-			response += f">CPU: {cpu_percent}%\n"
-
-		if mem_percent > 96:
-			response += f"‼️RAM: {mem_percent:.1f}% / Free: {mem_free_percent:.1f}%‼️\n"
-		else:
-			response += f">RAM: {mem_percent:.1f}% / Free: {mem_free_percent:.1f}%\n"
-
-		if not swap_percent == 0:
-			response += f">Swap: {swap_percent:.1f}% / Free: {swap_free_percent:.1f}%\n"
-		else:
-			pass
-
-		if disk_percent > 98:
-			response += f"‼️Disk Usage: {disk_percent:.1f}% / Free: {disk_free_percent:.1f}%‼️\n"
-		else:
-			response += f">Disk Usage: {disk_percent:.1f}% / Free: {disk_free_percent:.1f}%\n"
-
-		response += f"`Current date and time in RU Donetsk: {format_date}"
-
-		await message.reply(response)
-	else:
-		return
+			error_message = traceback.format_exc()
+			await hey.edit_text(f"Ошибка:(\n{error_message}\nЕсли же вы видите это, пишите {support}")
 
 @dp.message_handler(commands=["tag"])
 @delayed_message(rate_limit=2, rate_limit_interval=3)
@@ -187,10 +201,9 @@ async def toggle_tagging(message: Message):
                 Users.update(tag=True).where(Users.id == message.chat.id).execute()
                 await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username")
     except DoesNotExist:
-        # Создайте новую запись для пользователя, если она не существует
+        # Если пользователя нет в Users (DATABASE), то добавить его.
         Users.create(id=message.chat.id, tag=True)
         await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username\n<tg-spoiler>Вы были зарегистрированы в боте.</tg-spoiler>", parse_mode="HTML")
-
 
 @dp.message_handler(commands=["start"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
@@ -254,8 +267,8 @@ async def any(message: Message):
 		if seconds > 0:
 			duration_string += f"{seconds} секунд{'а' if seconds == 1 else ''}"
 
-		keyrules = InlineKeyboardMarkup().add(InlineKeyboardButton(text="#IT'S MUTE", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
-		return await message.reply(f"Ты сможешь писать только через {duration_string}", reply_markup=keyrules)
+		umute = InlineKeyboardMarkup().add(InlineKeyboardButton(text="#IT'S MUTE", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
+		return await message.reply(f"Ты сможешь писать только через {duration_string}", reply_markup=umute)
 
 	if Users.get(Users.id==message.chat.id).tag:
 		full_name = message.from_user.full_name
@@ -283,11 +296,10 @@ async def any(message: Message):
 
 	if is_flood(message.chat.id):
 		Users.update(mute=datetime.now() + timedelta(hours=1)).where(Users.id==message.chat.id).execute()
-		minchgod = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
+		minchgod = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"#FLOOD", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
 		ims = await message.reply("Это флуд.\nВы были отключены от чата на 1 час", reply_markup=minchgod)
 		await bot.pin_chat_message(ims.chat.id, ims.message_id)
 		user_id = message.from_user.id
-		message_id = message.reply_to_message.message_id
 		try:
 			await bot.send_message(chat_log, f"#FLOOD\n<b>ID:</b>{user_id}</b>")
 		except: pass
@@ -296,7 +308,7 @@ async def any(message: Message):
 	users = Users.select()
 	haha = await message.reply("Send...")
 	start_time = time.monotonic()
-	await Send(message, keyboard, reply_data if message.reply_to_message else None)
+	await Send(message, keyboard, reply_data)
 	end_time = time.monotonic()
 	send_duration = end_time - start_time
 

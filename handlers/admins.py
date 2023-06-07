@@ -8,6 +8,7 @@ from data.functions.models import *
 from data.functions import utils_mute
 from datetime import datetime, timedelta
 from delayer import delayed_message
+from screl import UQ
 from wipe import *
 
 log_file = "app.log"
@@ -43,13 +44,10 @@ async def me_info(message: Message):
 		return
 
 	keyb = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Возможности", callback_data="rights")) # type: ignore
-	keyb.add(InlineKeyboardButton(text="Удалить", callback_data="del1")) # type: ignore
+	keyb.add(InlineKeyboardButton(text="Удалить", callback_data="del")) # type: ignore
 	
 	await message.reply(f"Твоя должность: <code>{Admins.get(id=message.chat.id).name}</code>", reply_markup=keyb)
 
-@dp.callback_query_handler(text="del1")
-async def del1(call: CallbackQuery):
-	await call.message.delete()
 
 @dp.callback_query_handler(text="rights")
 async def get_rights(call: CallbackQuery):
@@ -81,7 +79,7 @@ async def back_in_admin(call: CallbackQuery):
 		return
 
 	keyb = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Возможности", callback_data="rights")) # type: ignore
-	keyb.add(InlineKeyboardButton(text="Удалить", callback_data="del1")) # type: ignore
+	keyb.add(InlineKeyboardButton(text="Удалить", callback_data="del")) # type: ignore
 	await call.message.edit_text(f"Твоя должность: <code>{Admins.get(id=call.message.chat.id).name}</code>", reply_markup=keyb)
 
 @dp.message_handler(commands=['wipe'])
@@ -554,10 +552,10 @@ async def unload(msg):
         await msg.reply("ok")
     else:
         Users.update(mute=datetime.now() + timedelta(minutes=45)).where(Users.id==msg.chat.id).execute()
-        keyboard = InlineKeyboardMarkup(row_width=1).add(
+        EQ = InlineKeyboardMarkup(row_width=1).add(
                 InlineKeyboardButton(text=f"ИНСТРУКЦИЯ КАК СНЯТЬ МУТ", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ") # type: ignore
         )
-        ims = await msg.reply("<b>Never gonna give you up</b>\n<tg-spoiler>Вы были отключены от чата на 45 минут</tg-spoiler>", parse_mode="HTML")
+        ims = await msg.reply("<b>Never gonna give you up</b>\n<tg-spoiler>Вы были отключены от чата на 45 минут</tg-spoiler>", reply_markup=EQ, parse_mode="HTML")
         await bot.pin_chat_message(ims.chat.id, ims.message_id)
         try:
             await bot.send_message(chat_log, f"#NEVER_GONNA_GIVE_YOU_UP\n<b>ID:</b><code>{msg.from_user.id}</code>")
