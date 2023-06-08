@@ -95,27 +95,64 @@ async def warns(message: types.Message):
 	await message.reply(f'Warns: {user.warns}.\n3 варна - мут на 7 часов.')
 
 @dp.message_handler(commands=['ping'])
-@delayed_message(rate_limit=2, rate_limit_interval=10)
+@delayed_message(rate_limit=1, rate_limit_interval=10)
 async def ping_telegram(message: types.Message):
-	pings = await message.reply("🤳PONG!")
+	pings = await message.reply("🌈PONG!🌈\n\n🏳️‍🌈Happy Pride Day! The U.S. reaffirms LGBTQI+ rights are human rights and no group should be excluded from those protections, regardless of race, ethnicity, sex, gender identity, sexual orientation, sex characteristics, disability status, age, religion or belief. The struggle to end violence, discrimination, criminalization, and stigma against LGBTQI+ persons is a global challenge.🏳️‍🌈")
 	try:
-		dc1 = ping3.ping('149.154.175.53')
-		dc2 = ping3.ping('149.154.167.51')
-		dc3 = ping3.ping('149.154.175.100')
-		dc4 = ping3.ping('149.154.167.91')
-		dc5 = ping3.ping('91.108.56.130')
-		await pings.edit_text(f'🏓Пинг телеграм дата центров:\n\n\n'
-							f'🇺🇸DC1 MIA, Miami FL, USA:<code>{dc1}</code>.ms\n\n'
-							f'🇳🇱DC2 AMS, Amsterdam, NL:<code>{dc2}</code>.ms\n\n'
-							f'🇺🇸DC3* MIA, Miami FL, USA:<code>{dc3}</code>.ms\n\n'
-							f'🇳🇱DC4 AMS, Amsterdam, NL:<code>{dc4}</code>.ms\n\n'
-							f'🇸🇬DC5 SIN, Singapore, SG:<code>{dc5}</code>.ms', parse_mode="HTML")
+		dc1 = ping3.ping('149.154.175.53', unit="ms", timeout=1)
+		dc2 = ping3.ping('149.154.167.51', unit="ms", timeout=1)
+		dc3 = ping3.ping('149.154.175.100', unit="ms", timeout=1)
+		dc4 = ping3.ping('149.154.167.91', unit="ms", timeout=1)
+		dc5 = ping3.ping('91.108.56.130', unit="ms",timeout=1)
+		one = ping3.ping('1.1.1.1', unit="ms", timeout=1)
+		google = ping3.ping('8.8.8.8', unit="ms", timeout=1)
+		quad9 = ping3.ping('9.9.9.9', unit="ms", timeout=1)
+		opendns = ping3.ping('208.67.222.222', unit="ms", timeout=1)
+		cleanbrowsing = ping3.ping('185.228.168.9', unit="ms", timeout=1)
+		comodo = ping3.ping('8.26.56.26', unit="ms", timeout=1)
+		level3 = ping3.ping('209.244.0.3', unit="ms", timeout=1)
+		opennic = ping3.ping('46.151.208.154', unit="ms", timeout=1)
+		dyn = ping3.ping('216.146.35.35', unit="ms", timeout=1)
+		yandex = ping3.ping('77.88.8.8', unit="ms", timeout=1)
+		adguard = ping3.ping('94.140.14.14', unit="ms", timeout=1)
+		watch = ping3.ping('84.200.69.80', unit="ms", timeout=1)
+		verisign = ping3.ping('64.6.64.6', unit="ms", timeout=1)
+		norton = ping3.ping('199.85.126.20', unit="ms", timeout=1)
+		safe = ping3.ping('195.46.39.39', unit="ms", timeout=1)
+		uncensored = ping3.ping('91.239.100.100', unit="ms", timeout=1)
+		freenom = ping3.ping('80.80.80.80', unit="ms", timeout=1)
+	
+		XH = '🏓 Пинг телеграм дата центров:\n'
+		XH += f'🇺🇸DC1 MIA, Miami FL, USA: <code>{dc1}</code> ms\n' if dc1 else '🇺🇸DC1 MIA, Miami FL, USA: <b>failed:(</b>\n'
+		XH += f'🇳🇱DC2 AMS, Amsterdam, NL: <code>{dc2}</code> ms\n' if dc2 else '🇳🇱DC2 AMS, Amsterdam, NL: <b>failed:(</b>\n'
+		XH += f'🇺🇸DC3* MIA, Miami FL, USA: <code>{dc3}</code> ms\n' if dc3 else '🇺🇸DC3* MIA, Miami FL, USA: <b>failed:(</b>\n'
+		XH += f'🇳🇱DC4 AMS, Amsterdam, NL: <code>{dc4}</code> ms\n' if dc4 else '🇳🇱DC4 AMS, Amsterdam, NL: <b>failed:(</b>\n'
+		XH += f'🇸🇬DC5 SIN, Singapore, SG: <code>{dc5}</code> ms\n' if dc5 else '🇸🇬DC5 SIN, Singapore, SG: <b>failed:(</b>\n'
+		XH += '\n🐘 DNS сервера:\n'
+		XH += f'🏳️‍🌈Cloudflare <i>1.1.1.1</i>: <code>{one}</code> ms\n' if one else '🌈Cloudflare <i>1.1.1.1</i>: <b>failed:(</b>\n'
+		XH += f'🏳️‍🌈Google <i>8.8.8.8</i>: <code>{google}</code> ms\n' if google else '🌈Google <i>8.8.8.8</i>: <b>failed:(</b>\n'
+		XH += f'🏳️‍🌈Quad9 <i>9.9.9.9</i>: <code>{quad9}</code> ms\n' if quad9 else '🌈Quad9 <i>9.9.9.9</i>: <b>failed:(</b>\n'
+		XH += f'🏳️‍🌈OpenDNS/Cisco <i>208.67.222.222</i>: <code>{opendns}</code> ms\n' if opendns else '🌈OpenDNS <i>208.67.222.222</i>: <b>failed:(</b>\n'
+		XH += f'🏳️‍🌈Cleanbrowsing <i>185.228.168.9</i>: <code>{cleanbrowsing}</code> ms\n' if cleanbrowsing else '🌈Cleanbrowsing <i>185.228.168.9</i>: <b>failed:(</b>\n'
+		XH += f'🏳️‍🌈Comodo Secure DNS <i>8.26.56.26</i>: <code>{comodo}</code> ms\n' if comodo else '🌈Comodo Secure DNS <i>8.26.56.26</i>: <b>failed:(</b>\n'
+		XH += f'🏳️‍🌈Level 3 <i>209.244.0.3</i>: <code>{level3}</code> ms\n' if level3 else '🌈Level 3 <i>209.244.0.3</i>: <b>failed:(</b>\n'
+		XH += f'🏳️‍🌈OpenNIC <i>46.151.208.154</i>: <code>{opennic}</code> ms\n' if opennic else '🌈OpenNIC <i>46.151.208.154</i>: <b>failed:(</b>\n'
+		XH += f'🏳️‍🌈DYN <i>216.146.35.35</i>: <code>{dyn}</code> ms\n' if dyn else '🌈DYN <i>216.146.35.35</i>: <b>failed:(</b>\n'
+		XH += f'🏳️‍🌈Yandex <i>77.88.8.8</i>: <code>{yandex}</code> ms\n' if yandex else '🌈Yandex <i>77.88.8.8</i>: <b>failed:(</b>\n'
+		XH += f'🏳️‍🌈AdGuard <i>94.140.14.14</i>: <code>{adguard}</code> ms\n' if adguard else '🌈AdGuard <i>94.140.14.14</i>: <b>failed:(</b>\n'
+		XH += f'🏳️‍🌈Watch <i>84.200.69.80</i>: <code>{watch}</code> ms\n' if watch else '🌈Watch <i>84.200.69.80</i>: <b>failed:(</b>\n'
+		XH += f'🏳️‍🌈Verisign <i>64.6.64.6</i>: <code>{verisign}</code> ms\n' if verisign else '🌈Verisign <i>64.6.64.6</i>: <b>failed:(</b>\n'
+		XH += f'🏳️‍🌈Norton ConnectSafe <i>199.85.126.20</i>: <code>{norton}</code> ms\n' if norton else '🌈Norton ConnectSafe <i>199.85.126.20</i>: <b>failed:(</b>\n'
+		XH += f'🏳️‍🌈SafeDNS <i>195.46.39.39</i>: <code>{safe}</code> ms\n' if safe else '🌈SafeDNS <i>195.46.39.39</i>: <b>failed:(</b>\n'
+		XH += f'🏳️‍🌈UncensoredDNS <i>91.239.100.100</i>: <code>{uncensored}</code> ms\n' if uncensored else '🌈UncensoredDNS <i>91.239.100.100</i>: <b>failed:(</b>\n'
+		XH += f'🏳️‍🌈FreeNom <i>80.80.80.80</i>: <code>{freenom}</code> ms\n' if freenom else '🌈Freenom <i>80.80.80.80</i>: <b>failed:(</b>\n'
+		await pings.edit_text(XH, parse_mode="HTML")
 	except PermissionError as e:
 		if isinstance(e, PermissionError) and str(e) == "[Errno 13] Permission denied":
 			await pings.edit_text(f"Ошибка:(\nЭто - Permission denied\nПопробуй /fix\nЕсли же вы видите это, пишите {support}")
 		else:
-			error_message = traceback.format_exc()  # Получение полного сообщения об ошибке
-			await pings.edit_text(f"Ошибка:(\n{error_message}\nПопробуй /fix\nЕсли же вы видите это, пишите {support}")
+			error = traceback.format_exc()  # Получение полного сообщения об ошибке
+			await pings.edit_text(f"Ошибка:(\n{error}\nПопробуй /fix\nЕсли же вы видите это, пишите {support}")
 
 @dp.message_handler(commands=["life"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
@@ -185,8 +222,8 @@ async def get_system_stats(message: types.Message):
 		if isinstance(e, PermissionError) and str(e) == "[Errno 13] Permission denied":
 			await hey.edit_text(f"Ошибка:(\nЭто - Permission denied\nПопробуй /fix\nЕсли же вы видите это, пишите {support}")
 		else:
-			error_message = traceback.format_exc()
-			await hey.edit_text(f"Ошибка:(\n{error_message}\nЕсли же вы видите это, пишите {support}")
+			error = traceback.format_exc()
+			await hey.edit_text(f"Ошибка:(\n{error}\nЕсли же вы видите это, пишите {support}")
 
 @dp.message_handler(commands=["tag"])
 @delayed_message(rate_limit=2, rate_limit_interval=3)
