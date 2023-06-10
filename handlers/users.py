@@ -16,6 +16,8 @@ from screl import UQ
 from datetime import datetime, timedelta
 logging.basicConfig(level=logging.DEBUG)
 
+upstart = datetime.now()
+
 def get_mention(user):
 	return f"t.me/{user.username}" if user.username else f"t.me/None"
 
@@ -53,13 +55,40 @@ async def unban(message: Message):
 
 @dp.message_handler(commands=["help"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
-async def help(message: Message):
-	await message.reply(
-			'<b>Я буду отправлять твои сообщения всем юзерам.</b>\n\n'
-			'<b>⌖ Все что вас может интересовать</b>\n'
-			'<b>></b> /start , /rules\n\n'
-			'<b>⌖ Когда будет обновление бота?</b>\n'
-			'<b>><u> Завтра, если нет, то прочтите это сообщение еще раз!</u></b>', parse_mode="HTML")
+async def help(msg):
+	user = Users.get_or_none(Users.id == msg.chat.id)
+	admin = Admins.get_or_none(id=msg.chat.id)
+	username = f'@{msg.from_user.username}' if msg.from_user.username else "undefined"
+	WB = '<b>Я буду отправлять твои сообщения всем юзерам.</b>\n\n'
+	WB += '<b>⌖ Все что вас может интересовать нужное</b>\n'
+	WB += '<b>></b> /start , /rules\n\n'
+	WB += '<b>⌖ Когда будет обновление бота?</b>\n'
+	WB += '<b>><u> Завтра, если нет, то прочтите это сообщение еще раз!</u></b>'
+	if user:
+		WB += '\n\n<b>Так же гайд по командам:</b>\n'
+		WB += '/start - <i>Старт бота</i>\n'
+		WB += '/rules - <i>Правила этого бота</i>\n'
+		WB += '/profile - <i>Твой профиль в боте</i>\n'
+		WB += f'/tag - <i>On/Off кнопку с ссыланием на</i> {username}\n'
+		WB += '/warns - <i>Сколько у тебя на данный момент варнов</i>\n'
+		WB += '/life - <i>Состояние сервера</i>\n'
+		WB += '/users - <i>Сколько юзеров в боте</i>\n'
+		WB += '/ping - <i>Пинг от сервера до телеграм серверов, DNS</i>'
+		if admin:
+			WB += '\n\n<b>Команды для <u>админов</u>:</b>\n'
+			WB += '/admin - <i>Узнать какие есть права к командам</i>\n'
+			WB += '/wipe - <i>Удалить файл сообщений в DB бота</i> ~(view)\n'
+			WB += '/restart - <i>Рестарт бота</i>\n'
+			WB += '/pin (reply) - <i>Закрепить сообщение</i> ~(ban)\n'
+			WB += '/unpin (reply) - <i>Открепить сообщение</i> ~(ban)\n'
+			WB += '/del (reply) - <i>Удалить сообщение</i> ~(purge)\n'
+			WB += '/mute (reply) (time - Xs;m;h;d;y) (reason) - <i>Замутить пользователя</i> ~(mute)\n'
+			WB += 'ㅤㅤ X - <i>время</i>\nㅤㅤ s - <i>секунды</i>\nㅤㅤ m - <i>минуты</i>\nㅤㅤ h - <i>часы</i>\nㅤㅤ d - <i>дни</i>\nㅤㅤ y - <i>года</i>\n'
+			WB += '/unmute (id/reply) (reason) - <i>Размутить пользователя</i> ~(mute)\n'
+			WB += '/warn (reply) (reason) - <i>Дать один WARN пользователю</i> ~(warn)\n'
+			WB += '/unwarn (id/reply) (reason) - <i>Снять один WARN пользователю</i> ~(warn)'
+	
+	await msg.reply(WB)
 
 @dp.message_handler(commands=["profile"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
@@ -111,8 +140,7 @@ async def ping_telegram(message: types.Message):
 		cleanbrowsing = ping3.ping('185.228.168.9', unit="ms", timeout=1)
 		comodo = ping3.ping('8.26.56.26', unit="ms", timeout=1)
 		level3 = ping3.ping('209.244.0.3', unit="ms", timeout=1)
-		opennic = ping3.ping('46.151.208.154', unit="ms", timeout=1)
-		dyn = ping3.ping('216.146.35.35', unit="ms", timeout=1)
+		opennic = ping3.ping('134.195.4.2', unit="ms", timeout=1)
 		yandex = ping3.ping('77.88.8.8', unit="ms", timeout=1)
 		adguard = ping3.ping('94.140.14.14', unit="ms", timeout=1)
 		watch = ping3.ping('84.200.69.80', unit="ms", timeout=1)
@@ -136,8 +164,7 @@ async def ping_telegram(message: types.Message):
 		XH += f'🏳️‍🌈Cleanbrowsing <i>185.228.168.9</i>: <code>{cleanbrowsing}</code> ms\n' if cleanbrowsing else '🌈Cleanbrowsing <i>185.228.168.9</i>: <b>failed:(</b>\n'
 		XH += f'🏳️‍🌈Comodo Secure DNS <i>8.26.56.26</i>: <code>{comodo}</code> ms\n' if comodo else '🌈Comodo Secure DNS <i>8.26.56.26</i>: <b>failed:(</b>\n'
 		XH += f'🏳️‍🌈Level 3 <i>209.244.0.3</i>: <code>{level3}</code> ms\n' if level3 else '🌈Level 3 <i>209.244.0.3</i>: <b>failed:(</b>\n'
-		XH += f'🏳️‍🌈OpenNIC <i>46.151.208.154</i>: <code>{opennic}</code> ms\n' if opennic else '🌈OpenNIC <i>46.151.208.154</i>: <b>failed:(</b>\n'
-		XH += f'🏳️‍🌈DYN <i>216.146.35.35</i>: <code>{dyn}</code> ms\n' if dyn else '🌈DYN <i>216.146.35.35</i>: <b>failed:(</b>\n'
+		XH += f'🏳️‍🌈OpenNIC <i>134.195.4.2</i>: <code>{opennic}</code> ms\n' if opennic else '🌈OpenNIC <i>134.195.4.2</i>: <b>failed:(</b>\n'
 		XH += f'🏳️‍🌈Yandex <i>77.88.8.8</i>: <code>{yandex}</code> ms\n' if yandex else '🌈Yandex <i>77.88.8.8</i>: <b>failed:(</b>\n'
 		XH += f'🏳️‍🌈AdGuard <i>94.140.14.14</i>: <code>{adguard}</code> ms\n' if adguard else '🌈AdGuard <i>94.140.14.14</i>: <b>failed:(</b>\n'
 		XH += f'🏳️‍🌈Watch <i>84.200.69.80</i>: <code>{watch}</code> ms\n' if watch else '🌈Watch <i>84.200.69.80</i>: <b>failed:(</b>\n'
@@ -146,7 +173,8 @@ async def ping_telegram(message: types.Message):
 		XH += f'🏳️‍🌈SafeDNS <i>195.46.39.39</i>: <code>{safe}</code> ms\n' if safe else '🌈SafeDNS <i>195.46.39.39</i>: <b>failed:(</b>\n'
 		XH += f'🏳️‍🌈UncensoredDNS <i>91.239.100.100</i>: <code>{uncensored}</code> ms\n' if uncensored else '🌈UncensoredDNS <i>91.239.100.100</i>: <b>failed:(</b>\n'
 		XH += f'🏳️‍🌈FreeNom <i>80.80.80.80</i>: <code>{freenom}</code> ms\n' if freenom else '🌈Freenom <i>80.80.80.80</i>: <b>failed:(</b>\n'
-		await pings.edit_text(XH, parse_mode="HTML")
+		SD = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Удалить", callback_data="del")) # type: ignore
+		await pings.edit_text(XH, reply_markup=SD, parse_mode="HTML")
 	except PermissionError as e:
 		if isinstance(e, PermissionError) and str(e) == "[Errno 13] Permission denied":
 			await pings.edit_text(f"Ошибка:(\nЭто - Permission denied\nПопробуй /fix\nЕсли же вы видите это, пишите {support}")
@@ -162,7 +190,26 @@ async def get_system_stats(message: types.Message):
 	try:
 		user = Users.get_or_none(Users.id == message.chat.id)
 		if user:
+			was = datetime.now()
+			uptime = was - upstart
 			start_time = time.monotonic()
+			formatted_uptime = str(uptime).split(".")[0]
+			if uptime.days > 0:
+				days = uptime.days
+				hours, remainder = divmod(uptime.seconds, 3600)
+				minutes, seconds = divmod(remainder, 60)
+				formatted_uptime = f"{days} дней {hours} часов {minutes} минут {seconds} секунд"
+			elif uptime.seconds >= 3600:
+				hours = uptime.seconds // 3600
+				minutes = (uptime.seconds % 3600) // 60
+				seconds = uptime.seconds % 60
+				formatted_uptime = f"{hours} часов {minutes} минут {seconds} секунд"
+			elif uptime.seconds >= 60:
+				minutes = uptime.seconds // 60
+				seconds = uptime.seconds % 60
+				formatted_uptime = f"{minutes} минут {seconds} секунд"
+			else:
+				formatted_uptime = f"{uptime.seconds} секунд"
 			cpu_percent = psutil.cpu_percent()
 			mem_info = psutil.virtual_memory()
 			mem_percent = mem_info.percent
@@ -215,6 +262,8 @@ async def get_system_stats(message: types.Message):
 			else:
 				response += f">Disk Usage: {disk_percent:.1f}% / Free: {disk_free_percent:.1f}%\n"
 
+			response += f"`Uptime bot: {formatted_uptime}\n"
+			
 			response += f"`Current date and time in RU Donetsk: {format_date}"
 			DS = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Удалить", callback_data="del")) # type: ignore
 			await hey.edit_text(response, reply_markup=DS)

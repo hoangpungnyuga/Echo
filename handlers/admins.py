@@ -91,6 +91,7 @@ async def start_wipe(message: types.Message):
 	await confirm_wipe(message)
 
 @dp.message_handler(commands=["restart"])
+@delayed_message(rate_limit=1, rate_limit_interval=10)
 async def restart_echo(message: types.Message):
 	if not Admins.get_or_none(id=message.chat.id):
 		return
@@ -371,7 +372,7 @@ async def mute(message: Message):
 	else:
 		duration = timedelta(seconds=duration_seconds)
 
-	Users.update(mute=datetime.now() + duration).where(Users.id == message.chat.id).execute()
+	Users.update(mute=datetime.now() + duration).where(Users.id == sender_id).execute()
 
 	await message.reply("Успех")
 
@@ -551,7 +552,8 @@ async def unload(msg):
             Users.update(mute=datetime.now()).where(Users.id==user.id).execute()
         await msg.reply("ok")
     else:
-        Users.update(mute=datetime.now() + timedelta(minutes=45)).where(Users.id==msg.chat.id).execute()
+        hes = Users.get(Users.id == msg.chat.id).mute
+        Users.update(mute=hes + timedelta(minutes=45)).where(Users.id == msg.chat.id).execute()
         EQ = InlineKeyboardMarkup(row_width=1).add(
                 InlineKeyboardButton(text=f"ИНСТРУКЦИЯ КАК СНЯТЬ МУТ", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ") # type: ignore
         )
