@@ -58,7 +58,8 @@ async def unban(message: Message):
 async def help(msg):
 	user = Users.get_or_none(Users.id == msg.chat.id)
 	admin = Admins.get_or_none(id=msg.chat.id)
-	username = f'@{msg.from_user.username}' if msg.from_user.username else "undefined"
+	right = Admins.get(id=msg.chat.id).rights
+	username = f'@{msg.from_user.username}' if msg.from_user.username else "<i>твой юзер</i>"
 	WB = '<b>Я буду отправлять твои сообщения всем юзерам.</b>\n\n'
 	WB += '<b>⌖ Все что вас может интересовать нужное</b>\n'
 	WB += '<b>></b> /start , /rules\n\n'
@@ -77,7 +78,8 @@ async def help(msg):
 		if admin:
 			WB += '\n\n<b>Команды для <u>админов</u>:</b>\n'
 			WB += '/admin - <i>Узнать какие есть права к командам</i>\n'
-			WB += '/wipe - <i>Удалить файл сообщений в DB бота</i> ~(view)\n'
+			if "view" in right:
+				WB += '/wipe - <i>Удалить файл сообщений в DB бота</i> ~(view)\n'
 			WB += '/restart - <i>Рестарт бота</i>\n'
 			WB += '/pin (reply) - <i>Закрепить сообщение</i> ~(ban)\n'
 			WB += '/unpin (reply) - <i>Открепить сообщение</i> ~(ban)\n'
@@ -86,7 +88,19 @@ async def help(msg):
 			WB += 'ㅤㅤ X - <i>время</i>\nㅤㅤ s - <i>секунды</i>\nㅤㅤ m - <i>минуты</i>\nㅤㅤ h - <i>часы</i>\nㅤㅤ d - <i>дни</i>\nㅤㅤ y - <i>года</i>\n'
 			WB += '/unmute (id/reply) (reason) - <i>Размутить пользователя</i> ~(mute)\n'
 			WB += '/warn (reply) (reason) - <i>Дать один WARN пользователю</i> ~(warn)\n'
-			WB += '/unwarn (id/reply) (reason) - <i>Снять один WARN пользователю</i> ~(warn)'
+			WB += '/unwarn (id/reply) (reason) - <i>Снять один WARN пользователю</i> ~(warn)\n\n'
+			WB += '<i>Ты можешь использовать</i>: /restart'
+			if "view" in right:
+				WB += ';/wipe'
+			if "ban" in right:
+				WB += ';/pin;/unpin'
+			if "purge" in right:
+				WB += ';/del'
+			if "mute" in right:
+				WB += ';/mute;/unmute'
+			if "warn" in right:
+				WB += ';/warn;/unwarn'
+			WB += '\n\n<b>А это <u>LOG CHAT</u> бота https://t.me/+Fywa1MPQ6MpkMGEy</b>'
 	
 	await msg.reply(WB)
 
@@ -277,26 +291,26 @@ async def get_system_stats(message: types.Message):
 @dp.message_handler(commands=["tag"])
 @delayed_message(rate_limit=2, rate_limit_interval=3)
 async def toggle_tagging(message: Message):
-    try:
-        user = Users.get(Users.id == message.chat.id)
-        if user:
-            if user.tag:
-                Users.update(tag=False).where(Users.id == message.chat.id).execute()
-                await message.reply("Ваши следующие сообщения <b>не</b> будут помечены вашим ником")
-            else:
-                Users.update(tag=True).where(Users.id == message.chat.id).execute()
-                await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username")
-    except DoesNotExist:
-        # Если пользователя нет в Users (DATABASE), то добавить его.
-        Users.create(id=message.chat.id, tag=True)
-        await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username\n<tg-spoiler>Вы были зарегистрированы в боте.</tg-spoiler>", parse_mode="HTML")
+	try:
+		user = Users.get(Users.id == message.chat.id)
+		if user:
+			if user.tag:
+				Users.update(tag=False).where(Users.id == message.chat.id).execute()
+				await message.reply("Ваши следующие сообщения <b>не</b> будут помечены вашим ником")
+			else:
+				Users.update(tag=True).where(Users.id == message.chat.id).execute()
+				await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username")
+	except DoesNotExist:
+		# Если пользователя нет в Users (DATABASE), то добавить его.
+		Users.create(id=message.chat.id, tag=True)
+		await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username\nВы были зарегистрированы в боте.", parse_mode="HTML")
 
 @dp.message_handler(commands=["start"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
 async def start(message: Message):
 	if not Users.select().where(Users.id==message.chat.id).exists():
 		Users.create(id=message.chat.id)
-	await message.reply('Салам, это эхо-бот от создателей ILNAZ GOD и Ким💖💖.\n\n'
+	await message.reply('Салам, это эхо-бот от создателей <b>ILNAZ GOD</b> и <b>Ким</b>💖💖.\n\n'
 			'Твои сообщения будут отправляться всем пользователям Echo.\n\n'
 			'Для получения более подробной информации, пожалуйста, ознакомьтесь с правилами.\n\n'
 			'(Это точно Echo-to-All?) Точнее если быть -- <b>Echo to Kim</b>❤️)')
@@ -385,10 +399,6 @@ async def any(message: Message):
 		minchgod = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"#FLOOD", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
 		ims = await message.reply("Это флуд.\nВы были отключены от чата на 1 час", reply_markup=minchgod)
 		await bot.pin_chat_message(ims.chat.id, ims.message_id)
-		user_id = message.from_user.id
-		try:
-			await bot.send_message(chat_log, f"#FLOOD\n<b>ID:</b>{user_id}</b>")
-		except: pass
 		return
 
 	users = Users.select()
