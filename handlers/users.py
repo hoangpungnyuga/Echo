@@ -1,4 +1,4 @@
-from loader import bot, dp, chat_log, support
+from loader import bot, dp, support
 import asyncio
 import ping3
 import logging
@@ -55,11 +55,10 @@ async def unban(message: Message):
 
 @dp.message_handler(commands=["help"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
-async def help(msg):
-	user = Users.get_or_none(Users.id == msg.chat.id)
-	admin = Admins.get_or_none(id=msg.chat.id)
-	right = Admins.get(id=msg.chat.id).rights
-	username = f'@{msg.from_user.username}' if msg.from_user.username else "<i>твой юзер</i>"
+async def help(message: Message):
+	user = Users.get_or_none(Users.id == message.chat.id)
+	admin = Admins.get_or_none(id=message.chat.id)
+	username = f'@{message.from_user.username}' if message.from_user.username else "<i>твой юзер</i>"
 	WB = '<b>Я буду отправлять твои сообщения всем юзерам.</b>\n\n'
 	WB += '<b>⌖ Все что вас может интересовать нужное</b>\n'
 	WB += '<b>></b> /start , /rules\n\n'
@@ -76,6 +75,7 @@ async def help(msg):
 		WB += '/users - <i>Сколько юзеров в боте</i>\n'
 		WB += '/ping - <i>Пинг от сервера до телеграм серверов, DNS</i>'
 		if admin:
+			right = Admins.get(id=message.from_user.id).rights
 			WB += '\n\n<b>Команды для <u>админов</u>:</b>\n'
 			WB += '/admin - <i>Узнать какие есть права к командам</i>\n'
 			if "view" in right:
@@ -101,8 +101,18 @@ async def help(msg):
 			if "warn" in right:
 				WB += ';/warn;/unwarn'
 			WB += '\n\n<b>А это <u>LOG CHAT</u> бота https://t.me/+Fywa1MPQ6MpkMGEy</b>'
-	
-	await msg.reply(WB)
+	await message.reply(WB)
+
+async def check_floodwait(message):
+	try:
+		await bot.send_chat_action(chat_id=message.chat.id, action=types.ChatActions.TYPING)
+		return False, 0
+	except Exception as e:
+		if "FloodWait" in str(e):
+			seconds = int(str(e).split()[1])
+			return True, seconds
+		else:
+			return False, 0
 
 @dp.message_handler(commands=["profile"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
@@ -116,9 +126,14 @@ async def profile(message: Message):
 	if dur.startswith("-"):
 		dur = "undefined"
 	if Admins.get_or_none(id=message.chat.id):
-		is_admin = True
+		is_admin = "Yep:)"
 	else:
-		is_admin = False
+		is_admin = "No.."
+	flood, seconds = await check_floodwait(message)
+	if flood:
+		floodwait = f"Yes, {seconds} seconds"
+	else:
+		floodwait = "No detected"
 	msgs_db = rdb.get("messages", [])
 	await message.reply("Debug your profile info:\n"
 				f"Name: {message.from_user.full_name}\n"
@@ -126,9 +141,10 @@ async def profile(message: Message):
 				f"Username: {username}\n"
 				f"Mute: {dur}\n"
 				f"Warns: {user.warns}\n"
-				f"Admin_status: {is_admin}\n"
+				f"U admin?: {is_admin}\n"
 				f"Use_tag: {user.tag}\n"
 				f"Users: {len(users)}\n"
+				f"Floodwait?: {floodwait}\n"
 				f"lastmsg chat: {last_msg}, msg_sent: {len(msgs_db)}")
 
 @dp.message_handler(commands=['warns'])
@@ -155,7 +171,7 @@ async def ping_telegram(message: types.Message):
 		comodo = ping3.ping('8.26.56.26', unit="ms", timeout=1)
 		level3 = ping3.ping('209.244.0.3', unit="ms", timeout=1)
 		opennic = ping3.ping('134.195.4.2', unit="ms", timeout=1)
-		yandex = ping3.ping('77.88.8.8', unit="ms", timeout=1)
+#		yandex = ping3.ping('77.88.8.8', unit="ms", timeout=1)
 		adguard = ping3.ping('94.140.14.14', unit="ms", timeout=1)
 		watch = ping3.ping('84.200.69.80', unit="ms", timeout=1)
 		verisign = ping3.ping('64.6.64.6', unit="ms", timeout=1)
@@ -179,7 +195,7 @@ async def ping_telegram(message: types.Message):
 		XH += f'🏳️‍🌈Comodo Secure DNS <i>8.26.56.26</i>: <code>{comodo}</code> ms\n' if comodo else '🌈Comodo Secure DNS <i>8.26.56.26</i>: <b>failed:(</b>\n'
 		XH += f'🏳️‍🌈Level 3 <i>209.244.0.3</i>: <code>{level3}</code> ms\n' if level3 else '🌈Level 3 <i>209.244.0.3</i>: <b>failed:(</b>\n'
 		XH += f'🏳️‍🌈OpenNIC <i>134.195.4.2</i>: <code>{opennic}</code> ms\n' if opennic else '🌈OpenNIC <i>134.195.4.2</i>: <b>failed:(</b>\n'
-		XH += f'🏳️‍🌈Yandex <i>77.88.8.8</i>: <code>{yandex}</code> ms\n' if yandex else '🌈Yandex <i>77.88.8.8</i>: <b>failed:(</b>\n'
+#		XH += f'🏳️‍🌈Yandex <i>77.88.8.8</i>: <code>{yandex}</code> ms\n' if yandex else '🌈Yandex <i>77.88.8.8</i>: <b>failed:(</b>\n'
 		XH += f'🏳️‍🌈AdGuard <i>94.140.14.14</i>: <code>{adguard}</code> ms\n' if adguard else '🌈AdGuard <i>94.140.14.14</i>: <b>failed:(</b>\n'
 		XH += f'🏳️‍🌈Watch <i>84.200.69.80</i>: <code>{watch}</code> ms\n' if watch else '🌈Watch <i>84.200.69.80</i>: <b>failed:(</b>\n'
 		XH += f'🏳️‍🌈Verisign <i>64.6.64.6</i>: <code>{verisign}</code> ms\n' if verisign else '🌈Verisign <i>64.6.64.6</i>: <b>failed:(</b>\n'
@@ -197,10 +213,9 @@ async def ping_telegram(message: types.Message):
 			await pings.edit_text(f"Ошибка:(\n{error}\nПопробуй /fix\nЕсли же вы видите это, пишите {support}")
 
 @dp.message_handler(commands=["life"])
-@delayed_message(rate_limit=2, rate_limit_interval=5)
+@delayed_message(rate_limit=2, rate_limit_interval=9)
 async def get_system_stats(message: types.Message):
 	hey = await message.reply("I'm counting..")
-	await asyncio.sleep(1)
 	try:
 		user = Users.get_or_none(Users.id == message.chat.id)
 		if user:
@@ -247,37 +262,26 @@ async def get_system_stats(message: types.Message):
 				vol_duration_min = int(vol_duration // 60)
 				vol_duration_sec = int(vol_duration % 60)
 				vol_duration_str = f"{vol_duration_min} m {vol_duration_sec} s"
-
 			google = ping3.ping('8.8.8.8', unit="ms", timeout=1) or "failed:(" # DNS Google.
 			"""Если же это не работает, проверь - 'ping 8.8.8.8'
 			Если ответ - 'ping: socket: Operation not permitted'
 			Попробуй ' sudo sysctl -w net.ipv4.ping_group_range='0 2147483647' '"""
-
 			response = f"Status machine life🕊\nCommand completed in {vol_duration_str}.\n\n"
-
 			response += f"Time ping <code>8.8.8.8</code> completed in <code>{google:.3f}</code>.ms\n"
-			if cpu_percent > 97:
-				response += f"‼️CPU: {cpu_percent}%‼️\n"
-			else:
-				response += f">CPU: {cpu_percent}%\n"
-
-			if mem_percent > 96:
-				response += f"‼️RAM: {mem_percent:.1f}% / Free: {mem_free_percent:.1f}%‼️\n"
-			else:
-				response += f">RAM: {mem_percent:.1f}% / Free: {mem_free_percent:.1f}%\n"
-
-			if not swap_percent == 0:
-				response += f">Swap: {swap_percent:.1f}% / Free: {swap_free_percent:.1f}%\n"
-			else:
-				pass
-
-			if disk_percent > 98:
-				response += f"‼️Disk Usage: {disk_percent:.1f}% / Free: {disk_free_percent:.1f}%‼️\n"
-			else:
-				response += f">Disk Usage: {disk_percent:.1f}% / Free: {disk_free_percent:.1f}%\n"
-
+		
+			if cpu_percent > 97: response += f"‼️CPU: {cpu_percent}%‼️\n"
+			else: response += f">CPU: {cpu_percent}%\n"
+		
+			if mem_percent > 96: response += f"‼️RAM: {mem_percent:.1f}% / Free: {mem_free_percent:.1f}%‼️\n"
+			else: response += f">RAM: {mem_percent:.1f}% / Free: {mem_free_percent:.1f}%\n"
+		
+			if not swap_percent == 0: response += f">Swap: {swap_percent:.1f}% / Free: {swap_free_percent:.1f}%\n"
+			else: pass
+		
+			if disk_percent > 98: response += f"‼️Disk Usage: {disk_percent:.1f}% / Free: {disk_free_percent:.1f}%‼️\n"
+			else: response += f">Disk Usage: {disk_percent:.1f}% / Free: {disk_free_percent:.1f}%\n"
+		
 			response += f"`Uptime bot: {formatted_uptime}\n"
-			
 			response += f"`Current date and time in RU Donetsk: {format_date}"
 			DS = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Удалить", callback_data="del")) # type: ignore
 			await hey.edit_text(response, reply_markup=DS)
@@ -372,13 +376,13 @@ async def any(message: Message):
 
 	if Users.get(Users.id==message.chat.id).tag:
 		full_name = message.from_user.full_name
-		username = message.from_user.username
+		username = message.from_user.username if message.from_user.username else None
 		keyboard = InlineKeyboardMarkup().add(
-		InlineKeyboardButton(f"{full_name}", url=f"t.me/{username}" if username else f"t.me/None") # type: ignore
+		InlineKeyboardButton(f"{full_name}", url=f"https://t.me/{username}/") # type: ignore
 		)
 		if Admins.get_or_none(id=message.chat.id):
 			keyboard.add(
-			InlineKeyboardButton("ADMIN", url=f"t.me/{username}" if username else f"t.me/None") # type: ignore
+			InlineKeyboardButton("ADMIN", url=f"https://t.me/{username}/") # type: ignore
 			)
 	else:
 		keyboard = None
@@ -402,7 +406,7 @@ async def any(message: Message):
 		return
 
 	users = Users.select()
-	haha = await message.reply("Send...")
+	haha = await message.reply("Send...\n<tg-spoiler>У меня оч хуевый интернет, так что отправка возможно будет долгой</tg-spoiler>")
 	start_time = time.monotonic()
 	await Send(message, keyboard, reply_data)
 	end_time = time.monotonic()
@@ -415,6 +419,6 @@ async def any(message: Message):
 	else:
 		send_duration_min = int(send_duration // 60)
 		send_duration_sec = int(send_duration % 60)
-		send_duration_str = f"{send_duration_min} минуту {send_duration_sec} секунд"
+		send_duration_str = f"{send_duration_min} минут {send_duration_sec} секунд"
 
 	await haha.edit_text(f"Твоё сообщение было отправлено {len(users)} пользователям бота за <b>{send_duration_str}</b>", parse_mode="HTML")

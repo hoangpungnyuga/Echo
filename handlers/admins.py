@@ -228,6 +228,7 @@ async def purge(message: Message):
 
 	user_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
 
+
 	if not user_id:
 		return await message.reply(strings["no_msg"])
 	replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
@@ -240,6 +241,15 @@ async def purge(message: Message):
 		InlineKeyboardButton(text=f"RULES", url="https://telegra.ph/Rules-Echo-to-Kim-04-30"), # type: ignore
 		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat)) # type: ignore
 	)
+
+	try:
+		USER = await bot.get_chat(user_id)
+		await bot.send_message(chat_log,
+			f"#PURGE\n<b>Админ:</b> <a href='{get_mention(mj.chat)}'>{mj.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Сообщение:</b>"
+		)
+		await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
+	except: pass
+
 	await bot.edit_message_reply_markup(mj.chat.id, mj.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
 
 	await asyncio.gather(*[
@@ -250,32 +260,9 @@ async def purge(message: Message):
 
 	await message.edit_text(strings["purged"])
 
-	try:
-		USER = await bot.get_chat(user_id)
-		await bot.send_message(chat_log,
-			f"#PURGE\n<b>Админ:</b> <a href='{get_mention(mj.chat)}'>{mj.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Сообщение:</b>"
-		)
-		await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
-	except: pass
-
 	ims = await bot.send_message(user_id, f"Ваше сообщение было удалено" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_to_message_id=reply_msg_id, reply_markup=keyboard) # type: ignore
 
 	await bot.pin_chat_message(ims.chat.id, ims.message_id)
-
-@dp.message_handler(commands=["uid"])
-async def uid(message: Message):
-	if not Admins.get_or_none(id=message.chat.id):
-		return
-	if not "view" in Admins.get(id=message.chat.id).rights:
-		return await message.reply(strings["no_rights"])
-
-	if not message.reply_to_message:
-		return await message.reply(strings["no_reply"])
-	id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
-	if not id:
-		return await message.reply(strings["no_msg"])
-	await message.reply(strings["id"].format(str(id)))
-
 
 @dp.message_handler(commands=["promote"])
 async def promote(message: Message):
@@ -306,7 +293,7 @@ async def promote(message: Message):
 		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat)) # type: ignore
 	)
 
-	ims = await bot.send_message(id, f"Тебя назначили админом: <code>{name}</code>\nАдмин-панель: /admin", reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, id)) # type: ignore
+	ims = await bot.send_message(id, f"Тебя назначили админом: <code>{name}</code>\nДля ознакомства посмотри /help", reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, id)) # type: ignore
 	await bot.pin_chat_message(ims.chat.id, ims.message_id)
 	await bot.unpin_chat_message(ims.chat.id, ims.message_id)
 
@@ -381,12 +368,6 @@ async def mute(message: Message):
 		InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat)) # type: ignore
 	)
 
-	try:
-		USER = await bot.get_chat(sender_id)
-		await bot.send_message(chat_log, f"#MUTE\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Время:</b> {duration}")
-		await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
-	except: pass
-
 	duration = duration.total_seconds() # type: ignore
 	seconds = int(duration % 60)
 	minutes = int((duration // 60) % 60)
@@ -422,7 +403,15 @@ async def mute(message: Message):
 		if data["chat_id"] != user_id and data["chat_id"] != message.chat.id # type: ignore
 	], return_exceptions=True)
 	reply_msg_id = get_reply_id(replies, user_id)
+
+	try:
+		USER = await bot.get_chat(sender_id)
+		await bot.send_message(chat_log, f"#MUTE\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Время:</b> {duration}")
+		await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
+	except: pass
+
 	await bot.edit_message_reply_markup(zvo.chat.id, zvo.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
+
 
 @dp.message_handler(commands=["warn"])
 async def warn_user(message):
@@ -457,6 +446,8 @@ async def warn_user(message):
             InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"), # type: ignore
             InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat)) # type: ignore
         )
+        await bot.send_message(chat_log, f"#WARN\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>" + (f"\nПричина: <code>{reason}</code>" if reason else "") + "\nСообщение:")
+        await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
         if user.warns < 2:
             ggt = await bot.send_message(user_id, f"#WARN\nВам было выдано предупреждение (варн), и сообщение, нарушающее правила, было удалено" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id)) # type: ignore
             await asyncio.gather(*[
@@ -469,15 +460,14 @@ async def warn_user(message):
         if user.warns >= 2:
             Users.update(warns=0, mute=datetime.now() + timedelta(hours=7)).where(Users.id == user_id).execute()
             rtv = await bot.send_message(user_id, f"#WARN\nВаше сообщение удалено, а так же вы были замучены на 7 часов" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id), parse_mode="HTML") # type: ignore
-            await bot.edit_message_reply_markup(rtv.chat.id, rtv.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
+
             await bot.pin_chat_message(rtv.chat.id, rtv.message_id)
             await asyncio.gather(*[
                 bot.delete_message(data["chat_id"], data["msg_id"]) # type: ignore
                 for data in replies # type: ignore
                 if data["chat_id"] != user_id and data["chat_id"] != message.chat.id # type: ignore
             ], return_exceptions=True)
-        await bot.send_message(chat_log, f"#WARN\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\nСообщение:", parse_mode="HTML")
-        await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
+        await bot.edit_message_reply_markup(rtv.chat.id, rtv.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
     else:
         await message.reply(strings["no_user"])
 
