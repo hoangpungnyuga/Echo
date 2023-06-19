@@ -243,7 +243,6 @@ async def purge(message: Message):
 	)
 
 	try:
-		USER = await bot.get_chat(user_id)
 		await bot.send_message(chat_log,
 			f"#PURGE\n<b>Админ:</b> <a href='{get_mention(mj.chat)}'>{mj.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Сообщение:</b>"
 		)

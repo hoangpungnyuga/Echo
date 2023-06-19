@@ -59,13 +59,14 @@ async def help(message: Message):
 	user = Users.get_or_none(Users.id == message.chat.id)
 	admin = Admins.get_or_none(id=message.chat.id)
 	username = f'@{message.from_user.username}' if message.from_user.username else "<i>твой юзер</i>"
+	IF = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Удалить", callback_data="del"))  # type: ignore
 	WB = '<b>Я буду отправлять твои сообщения всем юзерам.</b>\n\n'
-	WB += '<b>⌖ Все что вас может интересовать нужное</b>\n'
-	WB += '<b>></b> /start , /rules\n\n'
+	WB += '<b>⌖ Все, что вас может интересовать:</b>\n'
+	WB += '<b>></b> /start, /rules\n\n'
 	WB += '<b>⌖ Когда будет обновление бота?</b>\n'
 	WB += '<b>><u> Завтра, если нет, то прочтите это сообщение еще раз!</u></b>'
 	if user:
-		WB += '\n\n<b>Так же гайд по командам:</b>\n'
+		WB += '\n\n<b>Также гайд по командам:</b>\n'
 		WB += '/start - <i>Старт бота</i>\n'
 		WB += '/rules - <i>Правила этого бота</i>\n'
 		WB += '/profile - <i>Твой профиль в боте</i>\n'
@@ -73,35 +74,36 @@ async def help(message: Message):
 		WB += '/warns - <i>Сколько у тебя на данный момент варнов</i>\n'
 		WB += '/life - <i>Состояние сервера</i>\n'
 		WB += '/users - <i>Сколько юзеров в боте</i>\n'
-		WB += '/ping - <i>Пинг от сервера до телеграм серверов, DNS</i>'
+		WB += '/ping - <i>Пинг от сервера до телеграм серверов, DNS</i>'		
 		if admin:
 			right = Admins.get(id=message.from_user.id).rights
 			WB += '\n\n<b>Команды для <u>админов</u>:</b>\n'
 			WB += '/admin - <i>Узнать какие есть права к командам</i>\n'
 			if "view" in right:
-				WB += '/wipe - <i>Удалить файл сообщений в DB бота</i> ~(view)\n'
-			WB += '/restart - <i>Рестарт бота</i>\n'
-			WB += '/pin (reply) - <i>Закрепить сообщение</i> ~(ban)\n'
-			WB += '/unpin (reply) - <i>Открепить сообщение</i> ~(ban)\n'
-			WB += '/del (reply) - <i>Удалить сообщение</i> ~(purge)\n'
-			WB += '/mute (reply) (time - Xs;m;h;d;y) (reason) - <i>Замутить пользователя</i> ~(mute)\n'
+				WB += '/wipe - <i>Удалить файл сообщений в DB бота</i> <b>【view】</b>\n'
+			WB += '/restart - <i>Рестарт бота</i> <b>【ban】</b>\n'
+			WB += '/pin &lt;reply&gt; - <i>Закрепить сообщение</i> <b>【ban】</b>\n'
+			WB += '/unpin &lt;reply&gt; - <i>Открепить сообщение</i> <b>【ban】</b>\n'
+			WB += '/del &lt;reply&gt; - <i>Удалить сообщение</i> <b>【purge】</b>\n'
+			WB += '/mute &lt;reply&gt; &lt;Xs;m;h;d;y&gt; [reason] - <i>Замутить пользователя</i> <b>【mute】</b>\n'
 			WB += 'ㅤㅤ X - <i>время</i>\nㅤㅤ s - <i>секунды</i>\nㅤㅤ m - <i>минуты</i>\nㅤㅤ h - <i>часы</i>\nㅤㅤ d - <i>дни</i>\nㅤㅤ y - <i>года</i>\n'
-			WB += '/unmute (id/reply) (reason) - <i>Размутить пользователя</i> ~(mute)\n'
-			WB += '/warn (reply) (reason) - <i>Дать один WARN пользователю</i> ~(warn)\n'
-			WB += '/unwarn (id/reply) (reason) - <i>Снять один WARN пользователю</i> ~(warn)\n\n'
-			WB += '<i>Ты можешь использовать</i>: /restart'
+			WB += '/unmute &lt;id|reply&gt; [reason] - <i>Размутить пользователя</i> <b>【mute】</b>\n'
+			WB += '/warn &lt;reply&gt; [reason] - <i>Дать один WARN пользователю</i> <b>【warn】</b>\n'
+			WB += '/unwarn &lt;id|reply&gt; [reason] - <i>Снять один WARN пользователю</i> <b>【warn】</b>\n\n'
+			WB += '<i>Ты можешь использовать</i>: '	
+			if "ban" in right:
+				WB += '/restart;/pin;/unpin'
 			if "view" in right:
 				WB += ';/wipe'
-			if "ban" in right:
-				WB += ';/pin;/unpin'
 			if "purge" in right:
 				WB += ';/del'
 			if "mute" in right:
 				WB += ';/mute;/unmute'
 			if "warn" in right:
-				WB += ';/warn;/unwarn'
-			WB += '\n\n<b>А это <u>LOG CHAT</u> бота https://t.me/+Fywa1MPQ6MpkMGEy</b>'
-	await message.reply(WB)
+				WB += ';/warn;/unwarn'		
+			WB += '\n\n<b>А это <a href="https://t.me/+Fywa1MPQ6MpkMGEy"><u>LOG CHAT</u></a> бота</b>'
+
+	await message.reply(WB, reply_markup=IF, parse_mode="HTML")
 
 async def check_floodwait(message):
 	try:
@@ -314,10 +316,13 @@ async def toggle_tagging(message: Message):
 async def start(message: Message):
 	if not Users.select().where(Users.id==message.chat.id).exists():
 		Users.create(id=message.chat.id)
-	await message.reply('Салам, это эхо-бот от создателей <b>ILNAZ GOD</b> и <b>Ким</b>💖💖.\n\n'
-			'Твои сообщения будут отправляться всем пользователям Echo.\n\n'
-			'Для получения более подробной информации, пожалуйста, ознакомьтесь с правилами.\n\n'
-			'(Это точно Echo-to-All?) Точнее если быть -- <b>Echo to Kim</b>❤️)')
+
+	USER = f'<a href="https://{message.from_user.username}.t.me/">{message.from_user.full_name}</a>' if message.from_user.username else message.from_user.full_name
+	await message.reply(f'Салам, {USER}!'
+			'\nЭто эхо-бот от создателей <b>ILNAZ GOD</b> и <b>Ким</b>💖💖.'
+			'\n\nТвои сообщения будут отправляться всем пользователям Echo.'
+			'\n\nДля получения более подробной информации, пожалуйста, ознакомьтесь с правилами.'
+			'\n\n(Это точно Echo-to-All?) Точнее если быть -- <b>Echo to Kim</b>❤️)')
 
 async def send(message, *args, **kwargs):
 	return (await message.copy_to(*args, **kwargs)), args[0]
@@ -386,6 +391,12 @@ async def any(message: Message):
 			)
 	else:
 		keyboard = None
+
+	if not Users.select().where(Users.id==message.chat.id).exists():
+		USER = f'<a href="https://{message.from_user.username}.t.me/">You</a>' if message.from_user.username else 'You'
+		await message.answer(f"{USER} are not registered in the bot."
+								"\nTo register type /start")
+		return
 
 	Users.update(mute=datetime.now()).where(Users.id==message.chat.id).execute()
 	if message.reply_to_message:

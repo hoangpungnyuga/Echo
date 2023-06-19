@@ -1,7 +1,5 @@
 from peewee import *
 from lightdb import LightDB
-from aiogram.types import Message
-from typing import Awaitable
 from datetime import datetime, timedelta
 from collections import defaultdict
 
