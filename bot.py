@@ -5,6 +5,7 @@ from aiogram.utils import executor
 from datetime import datetime
 from colorama import init, Fore, Back, Style 
 from data.functions.models import Admins
+from loader import *
 
 class Notification():
     def __init__(self):

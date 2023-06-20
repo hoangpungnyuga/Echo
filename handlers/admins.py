@@ -7,9 +7,11 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 from data.functions.models import *
 from data.functions import utils_mute
 from datetime import datetime, timedelta
+from colorama import Fore, Back, Style 
 from delayer import delayed_message
 from screl import UQ
 from wipe import *
+import sys
 
 log_file = "app.log"
 
@@ -91,18 +93,17 @@ async def start_wipe(message: types.Message):
 	await confirm_wipe(message)
 
 @dp.message_handler(commands=["restart"])
-@delayed_message(rate_limit=1, rate_limit_interval=10)
-async def restart_echo(message: types.Message):
-	if not Admins.get_or_none(id=message.chat.id):
-		return
-	try:
-		await message.reply(f"The echo service has been restarted.\n<tg-spoiler>Если бот после этой команды не работает, значит не используй её:)\nЛибо пиши {support}</tg-spoiler>", parse_mode="HTML")
-		command = "sudo systemctl restart echo"
-		process = await asyncio.create_subprocess_shell(command)
-		await process.wait()
-        
-	except Exception as e:
-		await message.reply(f"Error while performing restart: {e}")
+async def restart_bot(message: types.Message):
+    print((Back.BLACK + Fore.WHITE + "RESTART" + Style.RESET_ALL) + ("🪄  " + Style.RESET_ALL) + (Back.WHITE + Fore.YELLOW + (f"ON: {message.from_user.username}" if message.from_user.username else f"ID: {message.from_user.id}") + Style.RESET_ALL))
+    # Write a report back
+    await message.answer('<b>Перезапуск..</b>')
+    # Close all active connections and close the event loop
+    await dp.storage.close()
+    await dp.storage.wait_closed()
+
+    # Restart the bot process without stopping the program
+    python = sys.executable
+    os.execl(python, python, *sys.argv)
 
 @dp.message_handler(commands=["pin"])
 async def pin_message(message: types.Message):
@@ -244,7 +245,7 @@ async def purge(message: Message):
 
 	try:
 		await bot.send_message(chat_log,
-			f"#PURGE\n<b>Админ:</b> <a href='{get_mention(mj.chat)}'>{mj.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Сообщение:</b>"
+			f"#DELETE\n<b>Админ:</b> <a href='{get_mention(mj.chat)}'>{mj.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Сообщение:</b>"
 		)
 		await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
 	except: pass
@@ -445,7 +446,7 @@ async def warn_user(message):
             InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"), # type: ignore
             InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat)) # type: ignore
         )
-        await bot.send_message(chat_log, f"#WARN\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>" + (f"\nПричина: <code>{reason}</code>" if reason else "") + "\nСообщение:")
+        await bot.send_message(chat_log, f"#WARN\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>" + (f"\n<b>Причина:</b> <code>{reason}</code>" if reason else "null") + "\n<b>Сообщение:</b>")
         await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
         if user.warns < 2:
             ggt = await bot.send_message(user_id, f"#WARN\nВам было выдано предупреждение (варн), и сообщение, нарушающее правила, было удалено" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id)) # type: ignore

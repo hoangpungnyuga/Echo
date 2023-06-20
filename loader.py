@@ -1,5 +1,6 @@
 import logging
 import asyncio
+from aiogram import types
 from aiogram.bot import Bot
 from aiogram.types import ParseMode
 from aiogram.dispatcher import Dispatcher

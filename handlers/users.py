@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.DEBUG)
 upstart = datetime.now()
 
 def get_mention(user):
-	return f"t.me/{user.username}" if user.username else f"t.me/None"
+	return f"https://t.me/{user.username}" if user.username else f"https://t.me/None"
 
 @dp.message_handler(commands=["rules"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
@@ -297,25 +297,35 @@ async def get_system_stats(message: types.Message):
 @dp.message_handler(commands=["tag"])
 @delayed_message(rate_limit=2, rate_limit_interval=3)
 async def toggle_tagging(message: Message):
+	if message.chat.type != types.ChatType.PRIVATE:
+		await message.reply(
+		"Bot works only in private messages"
+		"\nDone due to bugs.")
+		return
 	try:
-		user = Users.get(Users.id == message.chat.id)
+		user = Users.get(Users.id == message.from_user.id)
 		if user:
 			if user.tag:
-				Users.update(tag=False).where(Users.id == message.chat.id).execute()
+				Users.update(tag=False).where(Users.id == message.from_user.id).execute()
 				await message.reply("Ваши следующие сообщения <b>не</b> будут помечены вашим ником")
 			else:
-				Users.update(tag=True).where(Users.id == message.chat.id).execute()
+				Users.update(tag=True).where(Users.id == message.from_user.id).execute()
 				await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username")
 	except DoesNotExist:
 		# Если пользователя нет в Users (DATABASE), то добавить его.
-		Users.create(id=message.chat.id, tag=True)
+		Users.create(id=message.from_user.id, tag=True)
 		await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username\nВы были зарегистрированы в боте.", parse_mode="HTML")
 
 @dp.message_handler(commands=["start"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
 async def start(message: Message):
-	if not Users.select().where(Users.id==message.chat.id).exists():
-		Users.create(id=message.chat.id)
+	if message.chat.type != types.ChatType.PRIVATE:
+		await message.reply(
+		"Bot works only in private messages"
+		"\nDone due to bugs.")
+		return
+	if not Users.select().where(Users.id==message.from_user.id).exists():
+		Users.create(id=message.from_user.id)
 
 	USER = f'<a href="https://{message.from_user.username}.t.me/">{message.from_user.full_name}</a>' if message.from_user.username else message.from_user.full_name
 	await message.reply(f'Салам, {USER}!'

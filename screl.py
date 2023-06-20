@@ -8,7 +8,8 @@ async def leave_non_private_chats(message: types.Message):
     photo = InputFile(photo_path)
     ss = ("<b>I don't work in chats"
         "\nSince it's an anonymous echo bot.."
-        "\nWrite to PM</b>")
+        "\nWrite to PM"
+        "\nI'm leave..</b>")
     await bot.send_photo(message.chat.id, photo, caption=ss)
     await message.bot.leave_chat(message.chat.id)
 
