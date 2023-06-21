@@ -15,7 +15,10 @@ async def leave_non_private_chats(message: types.Message):
 
 @dp.message_handler(commands=["fix"])
 async def val(message: types.Message):
-    await message.answer(f'Действительно, а вообще пока-что этой команды не существует, но будет в будущем))\nКак и говорилось, пишите {support}')
+    dirp = "image/rick_astley.jpg"
+    photo = InputFile(dirp)
+    ss = ("<tg-spoiler>never gonna give you up</tg-spoiler>\nЯ задумался, в чем смысл этой команды, если есть traceback?\nИменно поэтому команда была удалена. Тут нечего искать.")
+    await bot.send_photo(message.chat.id, photo, caption=ss)
 
 @dp.callback_query_handler(text="del")
 async def UQ(call: CallbackQuery):

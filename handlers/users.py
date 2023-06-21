@@ -207,19 +207,21 @@ async def ping_telegram(message: types.Message):
 		XH += f'🏳️‍🌈FreeNom <i>80.80.80.80</i>: <code>{freenom}</code> ms\n' if freenom else '🌈Freenom <i>80.80.80.80</i>: <b>failed:(</b>\n'
 		SD = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Удалить", callback_data="del")) # type: ignore
 		await pings.edit_text(XH, reply_markup=SD, parse_mode="HTML")
-	except PermissionError as e:
-		if isinstance(e, PermissionError) and str(e) == "[Errno 13] Permission denied":
-			await pings.edit_text(f"Ошибка:(\nЭто - Permission denied\nПопробуй /fix\nЕсли же вы видите это, пишите {support}")
-		else:
-			error = traceback.format_exc()  # Получение полного сообщения об ошибке
-			await pings.edit_text(f"Ошибка:(\n{error}\nПопробуй /fix\nЕсли же вы видите это, пишите {support}")
+	except Exception:
+		me = 1898974239  # Тут меняете на свой ID куда надо отправить отчёт
+		error = traceback.format_exc()  # Получение полного сообщения об ошибке
+		EYE = InlineKeyboardMarkup().add(InlineKeyboardButton(text="🪄FIXED", callback_data="del")) # type: ignore
+		await pings.edit_text(f"Error:(\n\nСообщение об ошибке уже отправлено создателю бота\nВаш ID или username <b>НЕ БУДЕТ</b> передан в отчёте.")
+		ballin = (f"#ERROR_PING\n\nКто-то из пользователей получил ошибку при отработке команды /ping\n\n🪄Traceback: <code>{error}</code>")
+		ayo = await bot.send_message(me, ballin, reply_markup=EYE)
+		await bot.pin_chat_message(me, ayo.message_id)
 
 @dp.message_handler(commands=["life"])
 @delayed_message(rate_limit=2, rate_limit_interval=9)
 async def get_system_stats(message: types.Message):
 	hey = await message.reply("I'm counting..")
 	try:
-		user = Users.get_or_none(Users.id == message.chat.id)
+		user = Users.get_or_none(Users.id == message.from_user.id)
 		if user:
 			was = datetime.now()
 			uptime = was - upstart
@@ -287,12 +289,14 @@ async def get_system_stats(message: types.Message):
 			response += f"`Current date and time in RU Donetsk: {format_date}"
 			DS = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Удалить", callback_data="del")) # type: ignore
 			await hey.edit_text(response, reply_markup=DS)
-	except PermissionError as e:
-		if isinstance(e, PermissionError) and str(e) == "[Errno 13] Permission denied":
-			await hey.edit_text(f"Ошибка:(\nЭто - Permission denied\nПопробуй /fix\nЕсли же вы видите это, пишите {support}")
-		else:
-			error = traceback.format_exc()
-			await hey.edit_text(f"Ошибка:(\n{error}\nЕсли же вы видите это, пишите {support}")
+	except Exception:
+		me = 1898974239  # Тут меняете на свой ID куда надо отправить отчёт
+		error = traceback.format_exc()  # Получение полного сообщения об ошибке
+		EYE = InlineKeyboardMarkup().add(InlineKeyboardButton(text="🪄FIXED", callback_data="del")) # type: ignore
+		await hey.edit_text(f"Error:(\n\nСообщение об ошибке уже отправлено создателю бота\nВаш ID или username <b>НЕ БУДЕТ</b> передан в отчёте.")
+		ballin = (f"#ERROR_LIFE\n\nКто-то из пользователей получил ошибку при отработке команды /life\n\n🪄Traceback: <code>{error}</code>")
+		ayo = await bot.send_message(me, ballin, reply_markup=EYE)
+		await bot.pin_chat_message(me, ayo.message_id)
 
 @dp.message_handler(commands=["tag"])
 @delayed_message(rate_limit=2, rate_limit_interval=3)
