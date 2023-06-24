@@ -32,8 +32,7 @@ class Notification():
 def parse_args():
     parser = argparse.ArgumentParser(description='Bot Command Line Options')
     parser.add_argument('-i', '--info', action='store_true', help="info to dev and bot")
-    
-    # Добавьте другие аргументы командной строки по необходимости
+
     return parser.parse_args()
 
 def print_info():

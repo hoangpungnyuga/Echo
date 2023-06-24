@@ -1,5 +1,7 @@
 from functools import wraps
 from datetime import datetime, timedelta
+from aiogram import types
+from data.functions.models import Users
 
 def delayed_message(rate_limit: int, rate_limit_interval: int):
     def decorator(func):
@@ -21,3 +23,21 @@ def delayed_message(rate_limit: int, rate_limit_interval: int):
         return wrapper
 
     return decorator
+
+def registered_only(func):
+    async def wrapper(message: types.Message):
+        user_id = message.chat.id
+
+        if not Users.select().where(Users.id == user_id).exists():
+
+            USER = f'<a href="https://{message.from_user.username}.t.me/">You</a>' if message.from_user.username else 'You'
+            await message.answer(
+                f"{USER} are not registered in the bot."
+                "\nTo register type /start"
+            )
+
+            return
+
+        return await func(message)
+
+    return wrapper

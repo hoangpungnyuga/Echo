@@ -8,11 +8,11 @@ import pytz
 import traceback
 from peewee import DoesNotExist
 from aiogram import types
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, InputFile
 from data.functions.models import *
 from aiogram.types.message_id import MessageId
-from delayer import delayed_message
-from screl import UQ
+from control import delayed_message, registered_only
+from screl import check_floodwait
 from datetime import datetime, timedelta
 logging.basicConfig(level=logging.DEBUG)
 
@@ -27,8 +27,37 @@ async def rules(message: Message):
 	keyboard = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"RULES", url="https://telegra.ph/Rules-Echo-to-Kim-04-30")) # type: ignore
 	await message.reply(f"Правила этого бота\nТак же по поводу вопросов писать\n<b>>></b> {support}", reply_markup=keyboard)
 
+@dp.message_handler(commands=["start"])
+@delayed_message(rate_limit=2, rate_limit_interval=5)
+async def start(message: Message):
+	USER = f'<a href="https://{message.from_user.username}.t.me/">{message.from_user.full_name}</a>' if message.from_user.username else message.from_user.full_name
+	if message.chat.type != types.ChatType.PRIVATE:
+		await message.reply(
+		"Bot works only in private messages"
+		"\nDone due to bugs.")
+		return
+
+	if not Users.select().where(Users.id==message.from_user.id).exists():
+		image = 'image/welcome.png'
+		photo = InputFile(image)
+		se = f'Салам, <i>{USER}</i>!'
+		se += '\nТы попал в <a href="https://mastergroosha.github.io/telegram-tutorial/docs/lesson_01/">Echo</a>'
+		se += '\n<b>Вы не зарегистрированы в этом боте, а значит вы не можете им пользоваться.'
+		se += '\nПожалуйста, подтвердите свою регистрацию, и убедитесь что вы прочитали наши правила бота</b> /rules'
+		registr = InlineKeyboardMarkup().add(InlineKeyboardButton(text="✅Подтверить регистрацию", parse_mode="HTML", callback_data=f"confirm_registration={message.from_user.id}")) # type: ignore
+
+		await bot.send_photo(message.chat.id, photo, se, reply_markup=registr)
+
+	else:
+		await message.reply(f'Салам, {USER}!'
+				'\nЭто эхо-бот от создателей <b>ILNAZ GOD</b> и <b>Ким</b>💖💖.'
+				'\n\nТвои сообщения будут отправляться всем пользователям Echo.'
+				'\n\nДля получения более подробной информации, пожалуйста, ознакомьтесь с правилами.'
+				'\n\n(Это точно Echo-to-All?) Точнее если быть -- <b>Echo to Kim</b>❤️)')
+
 @dp.message_handler(commands=["users"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
+@registered_only
 async def stats(message: Message):
 	users = Users.select()
 	await message.reply(f"👾 На данный момент сейчас <code>{len(users)}</code> пользователей в боте")
@@ -58,7 +87,7 @@ async def unban(message: Message):
 async def help(message: Message):
 	user = Users.get_or_none(Users.id == message.chat.id)
 	admin = Admins.get_or_none(id=message.chat.id)
-	username = f'@{message.from_user.username}' if message.from_user.username else "<i>твой юзер</i>"
+	username = message.from_user.mention if message.from_user.username else "<i>твой юзер</i>"
 	IF = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Удалить", callback_data="del"))  # type: ignore
 	WB = '<b>Я буду отправлять твои сообщения всем юзерам.</b>\n\n'
 	WB += '<b>⌖ Все, что вас может интересовать:</b>\n'
@@ -105,24 +134,14 @@ async def help(message: Message):
 
 	await message.reply(WB, reply_markup=IF, parse_mode="HTML")
 
-async def check_floodwait(message):
-	try:
-		await bot.send_chat_action(chat_id=message.chat.id, action=types.ChatActions.TYPING)
-		return False, 0
-	except Exception as e:
-		if "FloodWait" in str(e):
-			seconds = int(str(e).split()[1])
-			return True, seconds
-		else:
-			return False, 0
-
 @dp.message_handler(commands=["profile"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
+@registered_only
 async def profile(message: Message):
 	user = Users.get_or_none(Users.id == message.chat.id)
 	users = Users.select()
 	last_msg = message.message_id
-	username = f'@{message.from_user.username}' if message.from_user.username else "undefined"
+	username = message.from_user.mention if message.from_user.username else "undefined"
 	delay = Users.get(Users.id==message.chat.id).mute - datetime.now()
 	dur = str(delay).split(".")[0]
 	if dur.startswith("-"):
@@ -151,12 +170,14 @@ async def profile(message: Message):
 
 @dp.message_handler(commands=['warns'])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
+@registered_only
 async def warns(message: types.Message):
 	user = Users.get_or_none(Users.id == message.chat.id)
 	await message.reply(f'Warns: {user.warns}.\n3 варна - мут на 7 часов.')
 
 @dp.message_handler(commands=['ping'])
 @delayed_message(rate_limit=1, rate_limit_interval=10)
+@registered_only
 async def ping_telegram(message: types.Message):
 	pings = await message.reply("🌈PONG!🌈\n\n🏳️‍🌈Happy Pride Day! The U.S. reaffirms LGBTQI+ rights are human rights and no group should be excluded from those protections, regardless of race, ethnicity, sex, gender identity, sexual orientation, sex characteristics, disability status, age, religion or belief. The struggle to end violence, discrimination, criminalization, and stigma against LGBTQI+ persons is a global challenge.🏳️‍🌈")
 	try:
@@ -218,6 +239,7 @@ async def ping_telegram(message: types.Message):
 
 @dp.message_handler(commands=["life"])
 @delayed_message(rate_limit=2, rate_limit_interval=9)
+@registered_only
 async def get_system_stats(message: types.Message):
 	hey = await message.reply("I'm counting..")
 	try:
@@ -314,29 +336,11 @@ async def toggle_tagging(message: Message):
 				await message.reply("Ваши следующие сообщения <b>не</b> будут помечены вашим ником")
 			else:
 				Users.update(tag=True).where(Users.id == message.from_user.id).execute()
-				await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username")
+				await message.reply(f"Ваши следующие сообщения будут помечены вашим ником и @username")
 	except DoesNotExist:
 		# Если пользователя нет в Users (DATABASE), то добавить его.
 		Users.create(id=message.from_user.id, tag=True)
 		await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username\nВы были зарегистрированы в боте.", parse_mode="HTML")
-
-@dp.message_handler(commands=["start"])
-@delayed_message(rate_limit=2, rate_limit_interval=5)
-async def start(message: Message):
-	if message.chat.type != types.ChatType.PRIVATE:
-		await message.reply(
-		"Bot works only in private messages"
-		"\nDone due to bugs.")
-		return
-	if not Users.select().where(Users.id==message.from_user.id).exists():
-		Users.create(id=message.from_user.id)
-
-	USER = f'<a href="https://{message.from_user.username}.t.me/">{message.from_user.full_name}</a>' if message.from_user.username else message.from_user.full_name
-	await message.reply(f'Салам, {USER}!'
-			'\nЭто эхо-бот от создателей <b>ILNAZ GOD</b> и <b>Ким</b>💖💖.'
-			'\n\nТвои сообщения будут отправляться всем пользователям Echo.'
-			'\n\nДля получения более подробной информации, пожалуйста, ознакомьтесь с правилами.'
-			'\n\n(Это точно Echo-to-All?) Точнее если быть -- <b>Echo to Kim</b>❤️)')
 
 async def send(message, *args, **kwargs):
 	return (await message.copy_to(*args, **kwargs)), args[0]
@@ -362,6 +366,7 @@ async def Send(message, keyboard, reply_data):
 	rdb.set("messages", msgs_db)
 
 @dp.message_handler(content_types="any")
+@registered_only
 async def any(message: Message):
 	if message.content_type == "pinned_message":
 		return
@@ -405,12 +410,6 @@ async def any(message: Message):
 			)
 	else:
 		keyboard = None
-
-	if not Users.select().where(Users.id==message.chat.id).exists():
-		USER = f'<a href="https://{message.from_user.username}.t.me/">You</a>' if message.from_user.username else 'You'
-		await message.answer(f"{USER} are not registered in the bot."
-								"\nTo register type /start")
-		return
 
 	Users.update(mute=datetime.now()).where(Users.id==message.chat.id).execute()
 	if message.reply_to_message:

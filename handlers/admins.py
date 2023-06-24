@@ -8,8 +8,6 @@ from data.functions.models import *
 from data.functions import utils_mute
 from datetime import datetime, timedelta
 from colorama import Fore, Back, Style 
-from delayer import delayed_message
-from screl import UQ
 from wipe import *
 import sys
 
