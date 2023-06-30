@@ -44,8 +44,8 @@ async def UQ(call: CallbackQuery):
     await call.message.delete()
 
 @dp.callback_query_handler(lambda call: call.data == f"confirm_registration={call.from_user.id}")
-async def registration(callback_query: types.CallbackQuery):
-	user_id = callback_query.from_user.id
+async def registration(call: types.CallbackQuery):
+	user_id = call.from_user.id
 
 	if not Users.select().where(Users.id == user_id).exists():
 		try:
@@ -53,15 +53,15 @@ async def registration(callback_query: types.CallbackQuery):
 		except:
 			pass
 		
-		await bot.answer_callback_query(callback_query.id, "Регистрация подтверждена.🔗")
-		await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id)
+		await bot.answer_callback_query(call.id, "Регистрация подтверждена.🔗")
+		await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
 		await bot.send_message(
-			callback_query.message.chat.id,
+			call.message.chat.id,
 				"<b>Отлично, вы зарегистрированы."
 				"\nТеперь вы можете писать всем юзерам Echo."
 				"\n\nДля более подробных деталей о командах и прочих, вы можете воспользоваться командой /help</b>"
 		)
 
 	else:
-		await bot.answer_callback_query(callback_query.id, "Вы уже зарегистрированы в боте.")
-		await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
+		await bot.answer_callback_query(call.id, "Вы уже зарегистрированы в боте.")
+		await bot.delete_message(call.message.chat.id, call.message.message_id)
