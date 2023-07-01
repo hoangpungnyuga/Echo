@@ -270,12 +270,9 @@ async def get_system_stats(message: types.Message):
             mem_info = psutil.virtual_memory()
             mem_percent = mem_info.percent
             mem_free_percent = mem_info.available * 100 / mem_info.total
-            try:
-                swap_info = psutil.swap_memory()
-                swap_percent = swap_info.percent
-                swap_free_percent = swap_info.free * 100 / swap_info.total
-            except:
-                pass
+            swap_info = psutil.swap_memory()
+            swap_percent = swap_info.percent
+            swap_free_percent = swap_info.free * 100 / swap_info.total
             disk_usage = psutil.disk_usage('/')
             disk_percent = disk_usage.percent
             disk_free_percent = 100 - disk_percent
