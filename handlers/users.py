@@ -21,7 +21,7 @@ upstart = datetime.now()
 @dp.message_handler(commands=["rules"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
 async def rules(message: Message):
-    keyboard = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"RULES", url="https://telegra.ph/Rules-Echo-to-Kim-04-30")) # type: ignore
+    keyboard = InlineKeyboardMarkup().add(InlineKeyboardButton(text="RULES", url="https://telegra.ph/Rules-Echo-to-Kim-04-30")) # type: ignore
     await message.reply(f"Правила этого бота\nТак же по поводу вопросов писать\n<b>>></b> {support}", reply_markup=keyboard)
 
 @dp.message_handler(commands=["start"])
@@ -35,16 +35,17 @@ async def start(message: Message):
         return
 
     if not Users.select().where(Users.id==message.from_user.id).exists():
-        image = 'image/welcome.png'
+        image = 'image/welcome.png' # Тут меняете путь изоображения на своё, либо просто замените файл.
         photo = InputFile(image)
+        url = 't.me/sensxn/6' # Тут тоже менять на своё
         se = f'Салам, <i>{USER}</i>!'
-        se += '\nТы попал в <a href="https://mastergroosha.github.io/telegram-tutorial/docs/lesson_01/">Echo</a>'
+        se += '\nТы попал в Echo<a href="https://mastergroosha.github.io/telegram-tutorial/docs/lesson_01/">&#185;</a>'
         se += '\n<b>Вы не зарегистрированы в этом боте, а значит вы не можете им пользоваться.'
-        se += '\nПожалуйста, подтвердите свою регистрацию, и убедитесь что вы прочитали наши правила бота</b> /rules'
-        registr = InlineKeyboardMarkup().add(InlineKeyboardButton(text="✅Подтверить регистрацию", parse_mode="HTML", callback_data=f"confirm_registration={message.from_user.id}")) # type: ignore
-
+        se += f'\nЧто это? Зачем это? см<a href="{url}">&#178;</a>'
+        se += '\nТак же, для обширного ознакомления существует /help'
+        se += '\nПожалуйста, подтвердите свою регистрацию, и убедитесь что вы прочитали наши правила бота /rules</b>'
+        registr = InlineKeyboardMarkup().add(InlineKeyboardButton(text="✅Подтверить регистрацию", callback_data=f"confirm_registration={message.from_user.id}")) # type: ignore
         await bot.send_photo(message.chat.id, photo, se, reply_markup=registr)
-
     else:
         await message.reply(f'Салам, {USER}!'
                 '\nЭто эхо-бот от создателей <b>ILNAZ GOD</b> и <b>Ким</b>💖💖.'
@@ -62,7 +63,7 @@ async def stats(message: Message):
 @dp.message_handler(commands=["nick"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
 async def nick(message: Message):
-    await message.reply(f'Oops.. Это не юзабельно!😾 Вместо этого используй /tag')
+    await message.reply('Oops.. Это не юзабельно!😾 Вместо этого используй /tag')
 
 @dp.message_handler(commands=["ban"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
@@ -115,8 +116,9 @@ async def help(message: Message):
             WB += 'ㅤㅤ X - <i>время</i>\nㅤㅤ s - <i>секунды</i>\nㅤㅤ m - <i>минуты</i>\nㅤㅤ h - <i>часы</i>\nㅤㅤ d - <i>дни</i>\nㅤㅤ y - <i>года</i>\n'
             WB += '/unmute &lt;id|reply&gt; [reason] - <i>Размутить пользователя</i> <b>【mute】</b>\n'
             WB += '/warn &lt;reply&gt; [reason] - <i>Дать один WARN пользователю</i> <b>【warn】</b>\n'
-            WB += '/unwarn &lt;id|reply&gt; [reason] - <i>Снять один WARN пользователю</i> <b>【warn】</b>\n\n'
-            WB += '<i>Ты можешь использовать</i>: '	
+            WB += '/unwarn &lt;id|reply&gt; [reason] - <i>Снять один WARN пользователю</i> <b>【warn】</b>\n'
+            WB += '/unstaff &lt;your_id&gt; - Снять себя с полномочия\n'
+            WB += '\n<i>Ты можешь использовать</i>: '	
             if "ban" in right:
                 WB += '/restart;/pin;/unpin'
             if "view" in right:
@@ -126,7 +128,9 @@ async def help(message: Message):
             if "mute" in right:
                 WB += ';/mute;/unmute'
             if "warn" in right:
-                WB += ';/warn;/unwarn'		
+                WB += ';/warn;/unwarn'
+            if right:
+                WB += ';/unstaff'
             WB += '\n\n<b>А это <a href="https://t.me/+Fywa1MPQ6MpkMGEy"><u>LOG CHAT</u></a> бота</b>'
 
     await message.reply(WB, reply_markup=IF, parse_mode="HTML")
@@ -281,7 +285,7 @@ async def get_system_stats(message: types.Message):
             end_time = time.monotonic()
             vol_duration = end_time - start_time
             if vol_duration < 1:
-                    vol_duration_str = f"{int(vol_duration * 1000)} ms"
+                vol_duration_str = f"{int(vol_duration * 1000)} ms"
             elif vol_duration < 60:
                 vol_duration_str = f"{int(vol_duration)} s"
             else:
