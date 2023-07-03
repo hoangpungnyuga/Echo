@@ -401,19 +401,19 @@ async def any(message: Message):
 
         duration_string = ""
         if years > 0:
-            duration_string += f"{years} год{'' if years == 1 else 'ов'} "
+            duration_string += f"{years} год{' ' if years == 1 else 'а ' if 2 <= years <= 4 else 'ов '}"
         if months > 0:
-            duration_string += f"{months} месяц{'' if months == 1 else 'ев'} "
+            duration_string += f"{months} месяц{' ' if months == 1 else 'а ' if 2 <= months <= 4 else 'ев '}"
         if days > 0:
-            duration_string += f"{days} д{'ень ' if days == 1 else 'ней '}"
+            duration_string += f"{days} д{'ень ' if days == 1 else 'ня ' if 2 <= days <= 4 else 'ней '}"
         if hours > 0:
-            duration_string += f"{hours} час{' ' if hours == 1 else 'ов '}"
+            duration_string += f"{hours} час{' ' if hours == 1 else 'а ' if 2 <= hours <= 4 else 'ов '}"
         if minutes > 0:
-            duration_string += f"{minutes} минут{' ' if minutes == 1 else ' '}"
+            duration_string += f"{minutes} минут{'а ' if minutes == 1 else 'ы ' if 2 <= minutes <= 4 else ' '}"
         if seconds > 0:
             duration_string += f"{seconds} секунд{'а' if seconds == 1 else ''}"
 
-        umute = InlineKeyboardMarkup().add(InlineKeyboardButton(text="#IT'S MUTE", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
+        umute = InlineKeyboardMarkup().add(InlineKeyboardButton(text="#MUTE", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
         return await message.reply(f"Ты сможешь писать только через {duration_string}", reply_markup=umute)
 
     if Users.get(Users.id==message.chat.id).tag:
