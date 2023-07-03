@@ -254,18 +254,34 @@ async def get_system_stats(message: types.Message):
                 days = uptime.days
                 hours, remainder = divmod(uptime.seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
-                formatted_uptime = f"{days} дней {hours} часов {minutes} минут {seconds} секунд"
+            
+                formatted_days = f"{days} день" if days == 1 else f"{days} дня" if 2 <= days <= 4 else f"{days} дней"
+                formatted_hours = f"{hours} час" if hours == 1 else f"{hours} часа" if 2 <= hours <= 4 else f"{hours} часов"
+                formatted_minutes = f"{minutes} минута" if minutes == 1 else f"{minutes} минуты" if 2 <= minutes <= 4 else f"{minutes} минут"
+                formatted_seconds = f"{seconds} секунда" if seconds == 1 else f"{seconds} секунды" if 2 <= seconds <= 4 else f"{seconds} секунд"
+            
+                formatted_uptime = f"{formatted_days} {formatted_hours} {formatted_minutes} {formatted_seconds}"
             elif uptime.seconds >= 3600:
                 hours = uptime.seconds // 3600
                 minutes = (uptime.seconds % 3600) // 60
                 seconds = uptime.seconds % 60
-                formatted_uptime = f"{hours} часов {minutes} минут {seconds} секунд"
+            
+                formatted_hours = f"{hours} час" if hours == 1 else f"{hours} часа" if 2 <= hours <= 4 else f"{hours} часов"
+                formatted_minutes = f"{minutes} минута" if minutes == 1 else f"{minutes} минуты" if 2 <= minutes <= 4 else f"{minutes} минут"
+                formatted_seconds = f"{seconds} секунда" if seconds == 1 else f"{seconds} секунды" if 2 <= seconds <= 4 else f"{seconds} секунд"
+            
+                formatted_uptime = f"{formatted_hours} {formatted_minutes} {formatted_seconds}"
             elif uptime.seconds >= 60:
                 minutes = uptime.seconds // 60
                 seconds = uptime.seconds % 60
-                formatted_uptime = f"{minutes} минут {seconds} секунд"
+            
+                formatted_minutes = f"{minutes} минута" if minutes == 1 else f"{minutes} минуты" if 2 <= minutes <= 4 else f"{minutes} минут"
+                formatted_seconds = f"{seconds} секунда" if seconds == 1 else f"{seconds} секунды" if 2 <= seconds <= 4 else f"{seconds} секунд"
+            
+                formatted_uptime = f"{formatted_minutes} {formatted_seconds}"
             else:
                 formatted_uptime = f"{uptime.seconds} секунд"
+
             cpu_percent = psutil.cpu_percent()
             mem_info = psutil.virtual_memory()
             mem_percent = mem_info.percent
@@ -290,9 +306,7 @@ async def get_system_stats(message: types.Message):
                 vol_duration_sec = int(vol_duration % 60)
                 vol_duration_str = f"{vol_duration_min} m {vol_duration_sec} s"
             google = ping3.ping('8.8.8.8', unit="ms", timeout=1) or "failed:(" # DNS Google.
-#            Если же это не работает, проверь - 'ping 8.8.8.8'
-#            Если ответ - 'ping: socket: Operation not permitted'
-#            Попробуй ' sudo sysctl -w net.ipv4.ping_group_range='0 2147483647'
+
             response = f"Status machine life🕊\nCommand completed in {vol_duration_str}.\n\n"
             try:
                 response += f"Time ping <code>8.8.8.8</code> completed in <code>{google:.3f}</code>.ms\n"
@@ -434,7 +448,7 @@ async def any(message: Message):
         return
 
     users = Users.select()
-    haha = await message.reply("Send...\n<tg-spoiler>У меня оч хуевый интернет, так что отправка возможно будет долгой</tg-spoiler>")
+    haha = await message.reply("Send..")
     start_time = time.monotonic()
     await Send(message, keyboard, reply_data)
     end_time = time.monotonic()
