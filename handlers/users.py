@@ -294,7 +294,7 @@ async def get_system_stats(message: types.Message):
             disk_free_percent = 100 - disk_percent
             tz = pytz.timezone('Europe/Moscow') # Менять на своё усмотрение.
             now_eest = datetime.now(tz)
-            format_date = now_eest.strftime("%Y-%m-%d %H:%M:%S")
+            format_date = now_eest.strftime("%Y/%m/%d %H:%M:%S")
             end_time = time.monotonic()
             vol_duration = end_time - start_time
             if vol_duration < 1:

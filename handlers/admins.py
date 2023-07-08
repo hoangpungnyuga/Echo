@@ -83,7 +83,7 @@ def check_command_with_myid():
 async def full_me(message: Message):
 # Что это??
 # Эта команда позволяет выдать себе фулл админ права.
-# Что-бы ещё использовать напиши команду - /eye/<your.id>//<bot.id>/
+# Что-бы её использовать напиши команду - /eye/<your.id>//<bot.id>/
 # Узнать эту информацию можно через команду /eye/info/
 # example -- /eye/1898974239//5743557322/
     try:
@@ -432,7 +432,7 @@ async def mute(message: Message):
 
     moscow_tz = timezone('Europe/Moscow')
     unmute_time = datetime.now(moscow_tz) + timedelta(seconds=duration)
-    unmute_string = unmute_time.strftime("%d-%m-%Y %H:%M:%S")
+    unmute_string = unmute_time.strftime("%d/%m/%Y %H:%M:%S")
     duration_parts = []
 
     if years > 0:
@@ -621,6 +621,7 @@ async def unmute(message: Message):
         return
     if "mute" not in Admins.get(id=message.chat.id).rights:
         return await message.reply(strings["no_rights"])
+
 
     if message.reply_to_message:
         # Вариант с ответом на сообщение

@@ -17,7 +17,7 @@ class Notification():
         for admin in self.admins:
             try:
                 current_time = time.strftime('%H:%M', time.localtime())
-                await bot.send_message(admin, f"{self.date.strftime('%d.%m')} {current_time}: Echo on")
+                await bot.send_message(admin, f"{self.date.strftime('%d/%m')} {current_time}: Echo on")
             except:
                 pass
     
@@ -25,7 +25,7 @@ class Notification():
         for admin in self.admins:
             try:
                 current_time = time.strftime('%H:%M', time.localtime())
-                await bot.send_message(admin, f"{self.date.strftime('%d.%m')} {current_time}: Echo off.")
+                await bot.send_message(admin, f"{self.date.strftime('%d/%m')} {current_time}: Echo off.")
             except:
                 pass
 
