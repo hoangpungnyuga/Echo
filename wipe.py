@@ -1,3 +1,5 @@
+# ⚖️ GPL-3.0 license
+# 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
 import os
 import subprocess
 from loader import bot, dp

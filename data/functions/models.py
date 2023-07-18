@@ -1,4 +1,6 @@
-from peewee import *
+# ⚖️ GPL-3.0 license
+# 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
+from peewee import SqliteDatabase, Model, PrimaryKeyField, BooleanField, DateTimeField, TextField, IntegerField
 from lightdb import LightDB
 from datetime import datetime, timedelta
 from collections import defaultdict
@@ -35,11 +37,15 @@ def get_reply_data(chat_id, msg_id):
 				return msg[1:]
 
 def get_reply_id(data, chat_id):
-	if not data:
-		return
-	for i in data:
-		if i["chat_id"] == chat_id:
-			return i["msg_id"]
+    if not data:
+        return
+    current_time = datetime.now()
+    ten_hours_ago = current_time - timedelta(hours=32)
+    for i in reversed(data):
+        if i.get("chat_id") == chat_id:
+            message_time = datetime.fromisoformat(i.get("time"))
+            if message_time >= ten_hours_ago:
+                return i.get("msg_id")
 
 def get_reply_sender(chat_id, msg_id):
 	for msg in rdb.get("messages", []):

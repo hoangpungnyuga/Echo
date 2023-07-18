@@ -1,6 +1,7 @@
+# ⚖️ GPL-3.0 license
+# 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
 import logging
 import asyncio
-from aiogram import types
 from aiogram.bot import Bot
 from aiogram.types import ParseMode
 from aiogram.dispatcher import Dispatcher
@@ -15,7 +16,8 @@ loop = asyncio.get_event_loop()
 bot = Bot(token=config["aiogram"]["bot_token"], parse_mode=ParseMode.HTML)
 dp = Dispatcher(bot=bot, loop=loop, storage=storage)
 chat_log = config["aiogram"]["chat_log"]
+ownew = config["aiogram"]["ownew"]
 
-support = "@Sunzurai or @HateisEternal" # Меняйте на свой по усмотрению
+support = "@Sunzurai or @wekosay" # Меняйте на свой по усмотрению
 
 logging.basicConfig(filename="logs.log", level=logging.ERROR)

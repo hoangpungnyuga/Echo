@@ -1,3 +1,5 @@
+# ⚖️ GPL-3.0 license
+# 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
 from loader import bot, dp, support
 import asyncio
 import ping3
@@ -9,10 +11,12 @@ import traceback
 from peewee import DoesNotExist
 from aiogram import types
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, InputFile
-from data.functions.models import *
+from data.functions.models import Users, Admins, rdb, get_reply_id, get_reply_data, is_flood
+from handlers.admins import n
+from loader import ownew
 from aiogram.types.message_id import MessageId
 from control import delayed_message, registered_only
-from screl import check_floodwait
+from screl import check_floodwait, not_username
 from datetime import datetime, timedelta
 logging.basicConfig(level=logging.DEBUG)
 
@@ -27,31 +31,32 @@ async def rules(message: Message):
 @dp.message_handler(commands=["start"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
 async def start(message: Message):
-    USER = f'<a href="https://{message.from_user.username}.t.me/">{message.from_user.full_name}</a>' if message.from_user.username else message.from_user.full_name
     if message.chat.type != types.ChatType.PRIVATE:
         await message.reply(
         "Bot works only in private messages"
         "\nDone due to bugs.")
         return
 
+    USER = f'<a href="https://{message.from_user.username}.t.me/">{message.from_user.full_name}</a>' if message.from_user.username else message.from_user.full_name
+
     if not Users.select().where(Users.id==message.from_user.id).exists():
         image = 'image/welcome.png' # Тут меняете путь изоображения на своё, либо просто замените файл.
         photo = InputFile(image)
+        confrim = InlineKeyboardMarkup().add(InlineKeyboardButton(text="✅Подтверить регистрацию", callback_data=f"confirm_registration={message.from_user.id}")) # type: ignore
         url = 't.me/sensxn/6' # Тут тоже менять на своё
-        se = f'Салам, <i>{USER}</i>!'
-        se += '\nТы попал в Echo<a href="https://mastergroosha.github.io/telegram-tutorial/docs/lesson_01/">&#185;</a>'
-        se += '\n<b>Вы не зарегистрированы в этом боте, а значит вы не можете им пользоваться.'
-        se += f'\nЧто это? Зачем это? см<a href="{url}">&#178;</a>'
-        se += '\nТак же, для обширного ознакомления существует /help'
-        se += '\nПожалуйста, подтвердите свою регистрацию, и убедитесь что вы прочитали наши правила бота /rules</b>'
-        registr = InlineKeyboardMarkup().add(InlineKeyboardButton(text="✅Подтверить регистрацию", callback_data=f"confirm_registration={message.from_user.id}")) # type: ignore
-        await bot.send_photo(message.chat.id, photo, se, reply_markup=registr)
+        se = (f'Салам, <i>{USER}</i>!'
+             '\nТы попал в Echo<a href="https://mastergroosha.github.io/telegram-tutorial/docs/lesson_01/">&#185;</a>'
+          '\n<b>Вы не зарегистрированы в этом боте, а значит вы не можете им пользоваться.'
+            f'\nЧто это? Зачем это? см<a href="{url}">&#178;</a>'
+             '\nТак же, для обширного ознакомления существует /help'
+             '\nПожалуйста, подтвердите свою регистрацию, и убедитесь что вы прочитали наши правила бота, /rules</b>')
+        await bot.send_photo(message.chat.id, photo, se, reply_markup=confrim)
     else:
         await message.reply(f'Салам, {USER}!'
-                '\nЭто эхо-бот от создателей <b>ILNAZ GOD</b> и <b>Ким</b>💖💖.'
-                '\n\nТвои сообщения будут отправляться всем пользователям Echo.'
-                '\n\nДля получения более подробной информации, пожалуйста, ознакомьтесь с правилами.'
-                '\n\n(Это точно Echo-to-All?) Точнее если быть -- <b>Echo to Kim</b>❤️)')
+                           '\nЭто эхо-бот от создателей <b>ILNAZ GOD</b> и <b>Ким</b>💖💖.'
+                         '\n\nТвои сообщения будут отправляться всем пользователям Echo.'
+                         '\n\nДля получения более подробной информации, пожалуйста, ознакомьтесь с правилами.'
+                        '\n\n(Это точно Echo-to-All?) Точнее если быть -- <b>Echo to Kim</b>❤️)')
 
 @dp.message_handler(commands=["users"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
@@ -65,18 +70,12 @@ async def stats(message: Message):
 async def nick(message: Message):
     await message.reply('Oops.. Это не юзабельно!😾 Вместо этого используй /tag')
 
-@dp.message_handler(commands=["ban"])
+@dp.message_handler(commands=["ban", "unban"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
 async def ban(message: Message):
-    if Admins.get_or_none(id=message.chat.id):
-        await message.reply("Теперь это /mute")
-    else:
-        return
-@dp.message_handler(commands=["unban"])
-@delayed_message(rate_limit=2, rate_limit_interval=5)
-async def unban(message: Message):
-    if Admins.get_or_none(id=message.chat.id):
-        await message.reply('Теперь это /unmute')
+    if Admins.get_or_none(id=message.from_user.id):
+        if message.text == "/ban" or message.text == "/unban":
+            await message.reply("Такого нет, смотри help")
     else:
         return
 
@@ -140,34 +139,57 @@ async def help(message: Message):
 @registered_only
 async def profile(message: Message):
     user = Users.get_or_none(Users.id == message.chat.id)
+
     users = Users.select()
+
     last_msg = message.message_id
+
     username = message.from_user.mention if message.from_user.username else "undefined"
+
     delay = Users.get(Users.id==message.chat.id).mute - datetime.now()
+
     dur = str(delay).split(".")[0]
+
     if dur.startswith("-"):
         dur = "undefined"
+
     if Admins.get_or_none(id=message.chat.id):
-        is_admin = "Yep:)"
+        is_admin = "Yeah."
+
     else:
         is_admin = "No.."
+
     flood, seconds = await check_floodwait(message)
+
     if flood:
         floodwait = f"Yes, {seconds} seconds"
     else:
         floodwait = "No detected"
+
     msgs_db = rdb.get("messages", [])
+
+    msgs_your = sum(1 for msg in msgs_db if msg[0].get("sender_id") == message.from_user.id) # type: ignore
+
+    user_date = "nothing."
+    for msg in reversed(msgs_db):
+        sender_id = msg[0].get("sender_id") # type: ignore
+        if sender_id == message.from_user.id:
+            user_date = msg[-1].get("time") # type: ignore
+            user_date = datetime.strptime(user_date[:-7], "%Y-%m-%d %H:%M:%S").strftime("%d.%m.%y %H:%M:%S")
+            break
+
     await message.reply("Debug your profile info:\n"
-                f"Name: {message.from_user.full_name}\n"
-                f"ID: <code>{message.from_user.id}</code>\n"
-                f"Username: {username}\n"
-                f"Mute: {dur}\n"
-                f"Warns: {user.warns}\n"
-                f"U admin?: {is_admin}\n"
-                f"Use_tag: {user.tag}\n"
-                f"Users: {len(users)}\n"
-                f"Floodwait?: {floodwait}\n"
-                f"lastmsg chat: {last_msg}, msg_sent: {len(msgs_db)}")
+                       f"Name: {message.from_user.full_name}\n"
+                       f"ID: <code>{message.from_user.id}</code>\n"
+                       f"Username: {username}\n"
+                       f"Mute: {dur}\n"
+                       f"Warns: {user.warns}\n"
+                       f"You admin?: {is_admin}\n"
+                       f"Use_tag: {user.tag}\n"
+                       f"Users: {len(users)}\n"
+                       f"Floodwait?: {floodwait}\n"
+                       f"lastmsg chats: {last_msg}, msg_sents: {len(msgs_db)}, msg_sent.u: {msgs_your}\n"
+                       f"lastmsg your time: {user_date}")
 
 @dp.message_handler(commands=['warns'])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
@@ -230,13 +252,12 @@ async def ping_telegram(message: types.Message):
         SD = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Удалить", callback_data="del")) # type: ignore
         await pings.edit_text(XH, reply_markup=SD, parse_mode="HTML")
     except Exception:
-        me = 1898974239  # Тут меняете на свой ID куда надо отправить отчёт
         error = traceback.format_exc()  # Получение полного сообщения об ошибке
         EYE = InlineKeyboardMarkup().add(InlineKeyboardButton(text="🪄FIXED", callback_data="del")) # type: ignore
         await pings.edit_text(f"Error:(\n\nСообщение об ошибке уже отправлено создателю бота\nВаш ID или username <b>НЕ БУДЕТ</b> передан в отчёте.")
-        ballin = (f"#ERROR_PING\n\nКто-то из пользователей получил ошибку при отработке команды /ping\n\n🪄Traceback: <code>{error}</code>")
-        ayo = await bot.send_message(me, ballin, reply_markup=EYE)
-        await bot.pin_chat_message(me, ayo.message_id)
+        ballin = (f"#ERROR\n\nКто-то из пользователей получил ошибку при отработке команды <code>{message.text}</code>\n\n🪄Traceback: <code>{error}</code>")
+        ayo = await bot.send_message(ownew, ballin, reply_markup=EYE)
+        await bot.pin_chat_message(ownew, ayo.message_id)
 
 @dp.message_handler(commands=["life"])
 @delayed_message(rate_limit=2, rate_limit_interval=9)
@@ -334,7 +355,7 @@ async def get_system_stats(message: types.Message):
         error = traceback.format_exc()  # Получение полного сообщения об ошибке
         EYE = InlineKeyboardMarkup().add(InlineKeyboardButton(text="🪄FIXED", callback_data="del")) # type: ignore
         await hey.edit_text(f"Error:(\n\nСообщение об ошибке уже отправлено создателю бота\nВаш ID или username <b>НЕ БУДЕТ</b> передан в отчёте.")
-        ballin = (f"#ERROR_LIFE\n\nКто-то из пользователей получил ошибку при отработке команды /life\n\n🪄Traceback: <code>{error}</code>")
+        ballin = (f"#ERROR_LIFE\n\nКто-то из пользователей получил ошибку при отработке команды <code>{message.text}</code>\n\n🪄Traceback: <code>{error}</code>")
         ayo = await bot.send_message(me, ballin, reply_markup=EYE)
         await bot.pin_chat_message(me, ayo.message_id)
 
@@ -365,20 +386,39 @@ async def send(message, *args, **kwargs):
 
 async def Send(message, keyboard, reply_data):
     result = [{"sender_id": message.chat.id}]
-    msgs = await asyncio.gather(*[
-        send(message, user.id, reply_markup=keyboard, reply_to_message_id=get_reply_id(reply_data, user.id) if message.reply_to_message else None)
-        for user in Users.select(Users.id)
-        if user.id != message.chat.id or user.id == message.chat.id and (user.id != 5885645595 or message.chat.id != 5885645595)
-    ], return_exceptions=True)
+    tasks = []
+    for user in Users.select(Users.id):
+        if user.id != message.chat.id or (user.id == message.chat.id and user.id != 5885645595):
+            task = asyncio.create_task(
+                send(
+                    message,
+                    user.id,
+                    reply_markup=keyboard,
+                    reply_to_message_id=get_reply_id(reply_data, user.id) if message.reply_to_message else None
+                )
+            )
+            tasks.append(task)
 
-    for msg_obj in msgs:
-        if isinstance(msg_obj, tuple):
-            msg, user_id = msg_obj
-            if isinstance(msg, MessageId):
-                result.append({"chat_id": user_id, "msg_id": msg.message_id})
-    else:
-        result.append({"chat_id": message.chat.id, "msg_id": message.message_id})
-    print(result)
+    for task in tasks:
+        try:
+            msg_obj = await task
+            if isinstance(msg_obj, tuple):
+                msg, user_id = msg_obj
+                if isinstance(msg, MessageId):
+                    result.append({"time": str(datetime.now()), "chat_id": user_id, "msg_id": msg.message_id})
+        except Exception as e:
+            print(f"Error occurred while sending message: {str(e)}")
+
+    result.append({"time": str(datetime.now()), "chat_id": message.chat.id, "msg_id": message.message_id})
+
+    for item in result:
+        time = item.get('time', '')
+        msg_id = item.get('msg_id', '')
+
+        if time and msg_id:
+            print(f"{time}, Message ID: {msg_id}")
+            break
+
     msgs_db = rdb.get("messages", [])
     msgs_db.append(result) # type: ignore
     rdb.set("messages", msgs_db)
@@ -388,6 +428,7 @@ async def Send(message, keyboard, reply_data):
 async def any(message: Message):
     if message.content_type == "pinned_message":
         return
+
     if datetime.now() < Users.get(Users.id==message.chat.id).mute:
         delay = Users.get(Users.id == message.chat.id).mute - datetime.now()
         duration = delay.total_seconds()
@@ -415,21 +456,67 @@ async def any(message: Message):
 
         umute = InlineKeyboardMarkup().add(InlineKeyboardButton(text="#MUTE", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
         return await message.reply(f"Ты сможешь писать только через {duration_string}", reply_markup=umute)
+    if message.text and (
+        "цп" in message.text.lower()
+        or "цэпэ" in message.text.lower()
+        or "цэпе" in message.text.lower()
+        or "цепэ" in message.text.lower()
+        or "цопэ" in message.text.lower()
+        or "дeтское" in message.text.lower()
+        or "дeтское" in message.text.lower()
+        or "дeтcкoе" in message.text.lower()
+        or "дeтcкoe" in message.text.lower()
+        or "детское" in message.text.lower()
+        or "детское" in message.text.lower()
+        or "детское" in message.text.lower()
+        or "детское" in message.text.lower()
+        or "детское" in message.text.lower()
+        or "детское" in message.text.lower()
+        or "детское" in message.text.lower()
+        or "детское" in message.text.lower()
+        or "child" in message.text.lower()
+        or "детского" == message.text
+        or "детского порно" == message.text
+        or "Детского" == message.text
+        or "children's" == message.text
+        or "children's porn" == message.text
+        or "children porn" == message.text
+        or "childrens porn" == message.text
+        or "children" == message.text):
+        with open("handlers/content/stop.txt", "r") as file:
+            fsb = file.read()
+        await message.reply(fsb)
+        return
 
-    if Users.get(Users.id==message.chat.id).tag:
-        full_name = message.from_user.full_name
-        username = message.from_user.username if message.from_user.username else None
+    if message.text and "ㅤ" in message.text.lower():
+        return
+
+    if Users.get(Users.id==message.from_user.id).tag and (message.from_user.full_name == "#DEBUG" 
+                                                          or message.from_user.full_name == "#Debug"
+                                                          or message.from_user.full_name == "DEBUG"
+                                                          or message.from_user.full_name == "Debug"
+                                                          ):
+        await message.reply(
+            "Твоё имя не разрешено, смени его\n"
+            "Либо, выключи /tag")
+        return
+
+    if Users.get(Users.id==message.from_user.id).tag:
+        name = message.from_user.full_name
+        username_or_rickroll = f"https://t.me/{message.from_user.username}/" if message.from_user.username else "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        also = f"https://t.me/{message.from_user.username}/" if message.from_user.username else "not0username!"
         keyboard = InlineKeyboardMarkup().add(
-        InlineKeyboardButton(f"{full_name}", url=f"https://t.me/{username}/") # type: ignore
+        InlineKeyboardButton(text=name, url=also if also.startswith("https") else None, callback_data=also if not also.startswith("https") else None) # type: ignore
         )
-        if Admins.get_or_none(id=message.chat.id):
+        if Admins.get_or_none(id=message.from_user.id):
             keyboard.add(
-            InlineKeyboardButton("ADMIN", url=f"https://t.me/{username}/") # type: ignore
+            InlineKeyboardButton("ADMIN", username_or_rickroll) # type: ignore
             )
     else:
         keyboard = None
 
-    Users.update(mute=datetime.now()).where(Users.id==message.chat.id).execute()
+    Users.update(mute=datetime.now()).where(Users.id==message.from_user.id).execute()
+
     if message.reply_to_message:
         reply_data = get_reply_data(message.chat.id, message.reply_to_message.message_id)
     else:
@@ -448,7 +535,7 @@ async def any(message: Message):
         return
 
     users = Users.select()
-    haha = await message.reply("Send..")
+    hey = await message.reply("Send..")
     start_time = time.monotonic()
     await Send(message, keyboard, reply_data)
     end_time = time.monotonic()
@@ -463,4 +550,4 @@ async def any(message: Message):
         send_duration_sec = int(send_duration % 60)
         send_duration_str = f"{send_duration_min} минут {send_duration_sec} секунд"
 
-    await haha.edit_text(f"Твоё сообщение было отправлено {len(users)} пользователям бота за <b>{send_duration_str}</b>", parse_mode="HTML")
+    await hey.edit_text(f"Твоё сообщение было отправлено {len(users)} пользователям бота за <b>{send_duration_str}</b>", parse_mode="HTML")

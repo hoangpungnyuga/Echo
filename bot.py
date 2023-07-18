@@ -1,3 +1,5 @@
+# ⚖️ GPL-3.0 license
+# 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
 import argparse
 import pytz
 import time
@@ -12,39 +14,46 @@ class Notification():
     def __init__(self):
         self.admins = Admins.select(Admins.id)
         self.date = datetime.now(pytz.timezone('Europe/Moscow')).date()
-    
-    async def on(self, dp):
+
+    async def on(self, a):
         for admin in self.admins:
             try:
                 current_time = time.strftime('%H:%M', time.localtime())
-                await bot.send_message(admin, f"{self.date.strftime('%d/%m')} {current_time}: Echo on")
+                me = await bot.get_me()
+                await bot.send_message(admin, f"{self.date.strftime('%d.%m')} {current_time}: <i>{me.first_name}</i> is startup now.")
             except:
                 pass
     
-    async def off(self, dp):
+    async def off(self, a):
         for admin in self.admins:
             try:
                 current_time = time.strftime('%H:%M', time.localtime())
-                await bot.send_message(admin, f"{self.date.strftime('%d/%m')} {current_time}: Echo off.")
+                me = await bot.get_me()
+                await bot.send_message(admin, f"{self.date.strftime('%d.%m')} {current_time}: <i>{me.first_name}</i> is shutdown now.")
             except:
                 pass
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Bot Command Line Options')
-    parser.add_argument('-i', '--info', action='store_true', help="info to dev and bot")
+    parser.add_argument('-i', '--info', action='store_true', help="Info to dev and bot")
 
     return parser.parse_args()
 
 def print_info():
     info = """
-    Info on this bot:
-    
-    This is an echo bot for anonymous communication on Telegram.
-    
+    GPL-3.0 license
 
-    Create this bot: Minch
-                     https://t.me/HateisEternal/
+    - 2023.04.15 start echo
+
+    Project on Mirai also Minch
+    This is an echo bot for anonymous communication on Telegram.
+
+
+    Create this bot: Mirai
+                     https://t.me/wekosay/
                      https://github.com/hoangpungnyuga/
+                      wekosay@dnmx.org
+                      wekosay@gtfcy37qyzor7kb6blz2buwuu5u7qjkycasjdf3yaslibkbyhsxub4yd.onion | Hichiriki
     """
 
     print(info)

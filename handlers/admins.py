@@ -1,10 +1,12 @@
+# ⚖️ GPL-3.0 license
+# 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
 import asyncio
 import pytz
-from loader import bot, dp, chat_log, support
+from loader import bot, dp, chat_log, ownew
 from aiogram import types
 from pytz import timezone
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
-from data.functions.models import *
+from data.functions.models import Users, Admins, get_reply_data, get_reply_sender, get_reply_id
 from data.functions import utils_mute
 from datetime import datetime, timedelta
 from colorama import Fore, Back, Style 
@@ -26,14 +28,16 @@ def get_rights_keyboard(me_id):
     return markup
 
 strings = {
-    "no_reply": "А где reply?",
-    "no_rights": "Нет доступа к этому выполнению",
+    "no_reply": "...",
+    "no_rights": "Ты не можешь это сделать.",
     "purging": "Очищаю...",
-    "no_msg": "Не найдено в DB",
+    "no_msg": "Не пойму что это.",
     "purged": "Очищение завершено",
     "id": "<a href=\"tg://user?id={0}\">ID:</a> <code>{0}</code>",
     "is_adm": "Он уже админ",
     "no_adm": "Он не админ",
+    "done": "Да, сделано, это успех",
+    "why": "...",
 }
 
 last_command_times = {}
@@ -74,6 +78,11 @@ async def inf(message: Message):
 
 def check_command_with_myid():
     async def decorator(message: Message):
+        if str(bot.id) == '6110017353':
+            return False
+        # Это запрещает использовать эту команду, если id бота == ''
+        # Вы можете написать id своего бота, если не хотите чтобы эта команда у вас работала.
+
         if message.text == f'/eye/{await myid(message)}//{bot.id}/':
             return True
         return False
@@ -90,16 +99,13 @@ async def full_me(message: Message):
         Admins.create(id=message.from_user.id, name='CREATOR:eye!', rights='mute;ban;warn;purge;view;promote')
         await message.answer(f'done. {message.from_user.id}')
     except Exception as e:
-        await message.answer(f'false. {message.from_user.id}\n{e}')
+        await message.answer(f'false. {message.text}\n{e}')
 
 @dp.message_handler(commands=['unstaff'])
 async def unstaff(message: Message):
     admin_id = message.from_user.id
     
     if not Admins.get_or_none(id=admin_id):
-        # Если пользователь не является администратором, предупредить его
-        await message.answer("Вы не являетесь администратором. Эта команда доступна только администраторам.\n"
-                            "А именно, позволяет снять с себя полномочия")
         return
     
     args = message.get_args() or ""  # Пустая строка, если аргумент отсутствует
@@ -167,11 +173,31 @@ async def pin_message(message: types.Message):
     if not "ban" in Admins.get(id=message.chat.id).rights:
         return await message.reply(strings["no_rights"])
     if not message.reply_to_message:
-        return await message.reply("Вы должны ответить на сообщение, которое хотите закрепить у всех.")
+        return await message.reply(strings["no_reply"])
 
-    rrs = await message.answer("Жди, закрепляю..")
+    wait = 1
+    if len(Users.select()) < 10:
+        wait = wait * 2
+    elif len(Users.select()) < 30:
+        wait = wait * 3
+    elif len(Users.select()) < 100:
+        wait = wait * 7
+    elif len(Users.select()) < 200:
+        wait = wait * 17
+    elif len(Users.select()) < 300:
+        wait = wait * 27
+    elif len(Users.select()) < 400:
+        wait = wait * 49
+    elif len(Users.select()) > 401:
+        wait = "очень долго"
+
+    wait = f'~{wait}s'
+
+    rrs = await message.answer(f"Жди, это займёт примерно <i>{wait}</i>.")
 
     replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
+
+    text = message.reply_to_message.text or message.reply_to_message.caption or 'undefined'
 
     if message.from_user.username:
         meuser = message.from_user.username
@@ -193,7 +219,7 @@ async def pin_message(message: types.Message):
 
                 if not log_written:
                     # Запись в файл лога
-                    log_message = (f'{current_time} - #PIN | admin_id: {message.from_user.id}, @{meuser}, | text: `{message.reply_to_message.text}`\n\n')
+                    log_message = (f'{current_time} - #PIN | admin_id: {message.from_user.id}, @{meuser}, | text: `{text}`\n\n')
 
                     with open(log_file, "a") as file:
                         file.write(log_message)
@@ -207,7 +233,7 @@ async def pin_message(message: types.Message):
 
         if not log_written:
             # Запись в файл лога
-            log_message = (f'{current_time} - #PIN | admin_id: {message.from_user.id}, @{meuser}, | text: `{message.reply_to_message.text}`\n\n')
+            log_message = (f'{current_time} - #PIN | admin_id: {message.from_user.id}, @{meuser}, | text: `{text}`\n\n')
 
             with open(log_file, "a") as file:
                 file.write(log_message)
@@ -220,16 +246,41 @@ async def pin_message(message: types.Message):
 
 @dp.message_handler(commands=["unpin"])
 async def unpin_message(message: types.Message):
-    if not Admins.get_or_none(id=message.chat.id):
+    if not Admins.get_or_none(id=message.from_user.id):
         return
-    if not "ban" in Admins.get(id=message.chat.id).rights:
+
+    if not "ban" in Admins.get(id=message.from_user.id).rights:
         return await message.reply(strings["no_rights"])
+
     if not message.reply_to_message:
-        return await message.reply("Вы должны ответить на сообщение, которое хотите разкрепить.")
+        return await message.reply(strings["no_reply"])
+
+    if not get_reply_data(message.chat.id, message.reply_to_message.message_id):
+        return await message.reply(strings["no_msg"])
 
     replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
 
-    sayguy = await message.answer("Жди, открепляю...")
+    wait = 1
+    if len(Users.select()) < 10:
+        wait = wait * 2
+    elif len(Users.select()) < 30:
+        wait = wait * 3
+    elif len(Users.select()) < 100:
+        wait = wait * 7
+    elif len(Users.select()) < 200:
+        wait = wait * 17
+    elif len(Users.select()) < 300:
+        wait = wait * 27
+    elif len(Users.select()) < 400:
+        wait = wait * 49
+    elif len(Users.select()) > 401:
+        wait = "очень долго"
+
+    wait = f'~{wait}s'
+
+    sayguy = await message.answer(f"Жди, это займёт примерно <i>{wait}</i>.")
+
+    text = message.reply_to_message.text or message.reply_to_message.caption or 'undefined'
 
     if message.from_user.username:
         meuser = message.from_user.username
@@ -251,7 +302,7 @@ async def unpin_message(message: types.Message):
 
                 if not log_written:
                     # Запись в файл лога
-                    log_message = (f'{current_time} - #UNPIN | admin_id: {message.from_user.id}, @{meuser}, | text: `{message.reply_to_message.text}`\n\n')
+                    log_message = (f'{current_time} - #UNPIN | admin_id: {message.from_user.id}, @{meuser}, | text: `{text}`\n\n')
 
                     with open(log_file, "a") as file:
                         file.write(log_message)
@@ -340,7 +391,7 @@ async def promote(message: Message):
     if Admins.get_or_none(id=id):
         return await message.reply(strings["is_adm"])
     Admins.create(id=id, name=name, rights=rights)
-    await message.reply("Успех")
+    await message.reply(strings["done"])
 
     keyboard = InlineKeyboardMarkup(row_width=1).add(
         InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"), # type: ignore
@@ -362,7 +413,6 @@ async def demote(message: Message):
         return await message.reply(strings["no_reply"])
 
     args = message.get_args().split() # type: ignore
-    reason = (None if not args else " ".join(args))
 
     id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
     if not id:
@@ -370,18 +420,12 @@ async def demote(message: Message):
     if not Admins.get_or_none(id=id):
         return await message.reply(strings["no_adm"])
 
-    dolj = Admins.get(id=id).name
+    if id == ownew:
+        await message.answer(strings["why"])
+        return
+
     Admins.delete().where(Admins.id==id).execute()
-    await message.reply("Успешно")
-    keyboard = InlineKeyboardMarkup(row_width=1).add(
-        InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"), # type: ignore
-        InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat)) # type: ignore
-    )
-
-    ims = await bot.send_message(id, f"Тебя сняли с администрации: <code>{dolj}</code>" + (f" через: <code>{reason}</code>" if reason else ""), reply_markup=keyboard)
-    await bot.pin_chat_message(ims.chat.id, ims.message_id)
-    await bot.unpin_chat_message(ims.chat.id, ims.message_id)
-
+    await message.reply(strings["done"])
 
 @dp.message_handler(commands=["mute"])
 async def mute(message: Message):
@@ -392,7 +436,6 @@ async def mute(message: Message):
     if not message.reply_to_message:
         return await message.reply(strings["no_reply"])
     zvo = message
-    user_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
     replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
     sender_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
     if not sender_id:
@@ -401,7 +444,7 @@ async def mute(message: Message):
     try:
         duration, reason = utils_mute.get_duration_and_reason(message.get_args().split()) # type: ignore
     except Exception as error:
-        return await message.reply(f"{error}")
+        return await message.reply(str(error))
 
     if not duration and not reason:
         await message.reply("Нет аргументов\nПример: /mute 1ч30м спам")
@@ -415,7 +458,7 @@ async def mute(message: Message):
 
     Users.update(mute=datetime.now() + duration).where(Users.id == sender_id).execute()
 
-    await message.reply("Успех")
+    await message.reply(strings["done"])
 
     keyboard = InlineKeyboardMarkup(row_width=1).add(
         InlineKeyboardButton(text="#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"), # type: ignore
@@ -463,7 +506,7 @@ async def mute(message: Message):
         for data in replies # type: ignore
         if data["chat_id"] != user_id and data["chat_id"] != message.chat.id # type: ignore
     ], return_exceptions=True)
-    reply_msg_id = get_reply_id(replies, user_id)
+    reply_msg_id = get_reply_id(replies, sender_id)
 
     try:
         USER = await bot.get_chat(sender_id)
@@ -558,8 +601,8 @@ async def unwarn_user(message):
         if len(args) > 1:
             reason = ' '.join(args[1:])
 
-    if user_id is None:
-        return await message.reply(strings["no_user"])
+    if not user_id:
+        return await message.reply(strings["no_msg"])
 
     if message.reply_to_message:
         replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
@@ -596,9 +639,9 @@ async def unwarn_user(message):
 
 @dp.message_handler(text="UNLOADALL")
 async def unload(msg):
-    if Admins.get_or_none(id=msg.chat.id) and msg.from_user.id != 1898974239:
+    if Admins.get_or_none(id=msg.from_user.id) and msg.from_user.id != ownew:
         return
-    elif msg.from_user.id == 1898974239:
+    elif msg.from_user.id == ownew:
         for user in Users.select(Users.id):
             Users.update(mute=datetime.now()).where(Users.id==user.id).execute()
         await msg.reply("ok")
@@ -611,7 +654,7 @@ async def unload(msg):
         ims = await msg.reply("<b>Never gonna give you up</b>\n<tg-spoiler>Вы были отключены от чата на 45 минут</tg-spoiler>", reply_markup=EQ, parse_mode="HTML")
         await bot.pin_chat_message(ims.chat.id, ims.message_id)
         try:
-            await bot.send_message(chat_log, f"#NEVER_GONNA_GIVE_YOU_UP\n<b>ID:</b><code>{msg.from_user.id}</code>")
+            await bot.send_message(chat_log, f"#NEVER_GONNA_GIVE_YOU_UP")
         except:
             pass
 
@@ -634,7 +677,7 @@ async def unmute(message: Message):
 
         Users.update(mute=datetime.now()).where(Users.id == sender_id).execute()
 
-        await message.reply("Успешно")
+        await message.reply(strings["done"])
         keyboard = InlineKeyboardMarkup(row_width=1).add(
             InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"),  # type: ignore
             InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))  # type: ignore
@@ -657,9 +700,18 @@ async def unmute(message: Message):
             return await message.reply("Вы должны указать ID пользователя для размута.\nЛибо по reply")
 
         user_id = args[0]
+
+        if args[0] == 'me':
+            user_id = message.from_user.id
+            reason = f'Unmute me! {message.from_user.id}'
+
+        await message.reply(strings["done"])
+
+        if datetime.now() > Users.get(Users.id==user_id).mute:
+            return
+
         Users.update(mute=datetime.now()).where(Users.id == user_id).execute()
 
-        await message.reply("Успешно")
         keyboard = InlineKeyboardMarkup(row_width=1).add(
             InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"),  # type: ignore
             InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))  # type: ignore

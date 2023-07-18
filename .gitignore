@@ -1,0 +1,8 @@
+.vscode
+__pycache__
+data/__pycache__
+data/config.ini
+data/config.ini
+data/functions/__pycache__
+handlers/__pycache__
+logs.log
