@@ -53,8 +53,8 @@ async def registration(call: types.CallbackQuery):
 	if not Users.select().where(Users.id == user_id).exists():
 		try:
 			Users.create(id=user_id)
-		except:
-			pass
+		except Exception as e:
+			return await call.message.answer(str(e))
 		
 		await bot.answer_callback_query(call.id, "Регистрация подтверждена.🔗")
 		await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
@@ -108,17 +108,13 @@ async def versions(message: types.Message):
 	except Exception as e:
 		await message.answer(str(e))
 
-@dp.message_handler(commands=['mirai', 'minch', 'child'])
+@dp.message_handler(commands=['mirai', 'minch'])
 async def dev(message: types.Message):
 	if message.text == "/mirai":
-		await message.answer("да, кстати это @Sunzurai")
+		await message.answer("Да? Кстати это @Sunzurai")
 
 	elif message.text == "/minch":
 		await message.answer("ну, это уже @wekosay")
-
-	elif message.text == "/child":
-		await message.answer("Пока ты спишь, твоя мать ночами деньги ртом зарабатывает, а ты в это время пишешь такое?!..", reply=True)
-	
 
 @dp.callback_query_handler(lambda c: c.data == 'not0username!')
 @delayed_message(rate_limit=1, rate_limit_interval=15)

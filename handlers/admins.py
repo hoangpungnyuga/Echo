@@ -2,6 +2,7 @@
 # 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
 import asyncio
 import pytz
+import sys
 from loader import bot, dp, chat_log, ownew
 from aiogram import types
 from pytz import timezone
@@ -11,12 +12,11 @@ from data.functions import utils_mute
 from datetime import datetime, timedelta
 from colorama import Fore, Back, Style 
 from wipe import *
-import sys
 
 log_file = "app.log"
 
 def get_mention(user):
-    return f"t.me/{user.username}" if user.username else f"tg://openmessage?user_id={user.id}"
+    return f"t.me/{user.username}/" if user.username else f"tg://openmessage?user_id={user.id}"
 
 def get_rights_keyboard(me_id):
     me_rights = Admins.get(id=me_id).rights
@@ -524,7 +524,7 @@ async def warn_user(message):
     if not "warn" in Admins.get(id=message.chat.id).rights:
         return await message.reply(strings["no_rights"])
 
-    user_id, reason = None, None
+    user_id, reason, rtv = None, None, None
 
     if message.reply_to_message:
         user_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
@@ -553,14 +553,13 @@ async def warn_user(message):
         await bot.send_message(chat_log, f"#WARN\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>" + (f"\n<b>Причина:</b> <code>{reason}</code>" if reason else "null") + "\n<b>Сообщение:</b>")
         await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
         if user.warns < 2:
-            ggt = await bot.send_message(user_id, f"#WARN\nВам было выдано предупреждение (варн), и сообщение, нарушающее правила, было удалено" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id)) # type: ignore
+            rtv = await bot.send_message(user_id, f"#WARN\nВам было выдано предупреждение (варн), и сообщение, нарушающее правила, было удалено" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id)) # type: ignore
             await asyncio.gather(*[
                 bot.delete_message(data["chat_id"], data["msg_id"]) # type: ignore
                 for data in replies # type: ignore
                 if data["chat_id"] != user_id and data["chat_id"] != message.chat.id # type: ignore
             ], return_exceptions=True)
-            await bot.edit_message_reply_markup(ggt.chat.id, ggt.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
-            await bot.pin_chat_message(ggt.chat.id, ggt.message_id)
+            await bot.pin_chat_message(rtv.chat.id, rtv.message_id)
         if user.warns >= 2:
             Users.update(warns=0, mute=datetime.now() + timedelta(hours=7)).where(Users.id == user_id).execute()
             rtv = await bot.send_message(user_id, f"#WARN\nВаше сообщение удалено, а так же вы были замучены на 7 часов" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id), parse_mode="HTML") # type: ignore
@@ -571,6 +570,7 @@ async def warn_user(message):
                 for data in replies # type: ignore
                 if data["chat_id"] != user_id and data["chat_id"] != message.chat.id # type: ignore
             ], return_exceptions=True)
+
         await bot.edit_message_reply_markup(rtv.chat.id, rtv.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
     else:
         await message.reply(strings["no_user"])

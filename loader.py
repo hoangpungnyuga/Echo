@@ -16,6 +16,7 @@ loop = asyncio.get_event_loop()
 bot = Bot(token=config["aiogram"]["bot_token"], parse_mode=ParseMode.HTML)
 dp = Dispatcher(bot=bot, loop=loop, storage=storage)
 chat_log = config["aiogram"]["chat_log"]
+chat_backup = config["aiogram"]["chat_backup"]
 ownew = config["aiogram"]["ownew"]
 
 support = "@Sunzurai or @wekosay" # Меняйте на свой по усмотрению

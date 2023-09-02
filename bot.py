@@ -7,7 +7,8 @@ from handlers import bot, dp
 from aiogram.utils import executor
 from datetime import datetime
 from colorama import init, Fore, Back, Style 
-from data.functions.models import Admins
+from data.functions.models import connect_to_database, Connect, Admins
+from data.functions.backup import backup_database
 from loader import *
 
 class Notification():
@@ -16,11 +17,16 @@ class Notification():
         self.date = datetime.now(pytz.timezone('Europe/Moscow')).date()
 
     async def on(self, a):
+        connection_time = connect_to_database()
+
         for admin in self.admins:
             try:
                 current_time = time.strftime('%H:%M', time.localtime())
+                db_name = Connect.get("database", '')
                 me = await bot.get_me()
-                await bot.send_message(admin, f"{self.date.strftime('%d.%m')} {current_time}: <i>{me.first_name}</i> is startup now.")
+                await bot.send_message(admin, f"{self.date.strftime('%d.%m')} {current_time}: <i>{me.first_name}</i> is startup now,"
+                                       f"\n <i>Connected to the database({db_name}) in {connection_time:.2f} ms</i>")
+                asyncio.create_task(backup_database())
             except:
                 pass
     
@@ -45,7 +51,7 @@ def print_info():
 
     - 2023.04.15 start echo
 
-    Project on Mirai also Minch
+    Project on Mirai Ahansai
     This is an echo bot for anonymous communication on Telegram.
 
 
@@ -57,7 +63,6 @@ def print_info():
     """
 
     print(info)
-
 
 if __name__ == "__main__":
     args = parse_args()

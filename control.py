@@ -32,7 +32,7 @@ def registered_only(func):
 
         if not Users.select().where(Users.id == user_id).exists():
 
-            USER = f'<a href="https://{message.from_user.username}.t.me/">You</a>' if message.from_user.username else 'You'
+            USER = f'<a href="https://t.me/{message.from_user.username}/">You</a>' if message.from_user.username else 'You'
             await message.answer(
                 f"{USER} are not registered in the bot."
                 "\nTo register type /start"

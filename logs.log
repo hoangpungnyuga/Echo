@@ -1,0 +1,18 @@
+ERROR:asyncio:Task exception was never retrieved
+future: <Task finished name='Task-60' coro=<Dispatcher._process_polling_updates() done, defined at /home/codespace/.local/lib/python3.10/site-packages/aiogram/dispatcher/dispatcher.py:407> exception=NameError("name 'user_id' is not defined")>
+Traceback (most recent call last):
+  File "/home/codespace/.local/lib/python3.10/site-packages/aiogram/dispatcher/dispatcher.py", line 415, in _process_polling_updates
+    for responses in itertools.chain.from_iterable(await self.process_updates(updates, fast)):
+  File "/home/codespace/.local/lib/python3.10/site-packages/aiogram/dispatcher/dispatcher.py", line 235, in process_updates
+    return await asyncio.gather(*tasks)
+  File "/home/codespace/.local/lib/python3.10/site-packages/aiogram/dispatcher/handler.py", line 117, in notify
+    response = await handler_obj.handler(*args, **partial_data)
+  File "/home/codespace/.local/lib/python3.10/site-packages/aiogram/dispatcher/dispatcher.py", line 256, in process_update
+    return await self.message_handlers.notify(update.message)
+  File "/home/codespace/.local/lib/python3.10/site-packages/aiogram/dispatcher/handler.py", line 117, in notify
+    response = await handler_obj.handler(*args, **partial_data)
+  File "/workspaces/Echo/handlers/admins.py", line 504, in mute
+    await asyncio.gather(*[
+  File "/workspaces/Echo/handlers/admins.py", line 507, in <listcomp>
+    if data["chat_id"] != user_id and data["chat_id"] != message.chat.id # type: ignore
+NameError: name 'user_id' is not defined

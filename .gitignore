@@ -6,3 +6,4 @@ data/config.ini
 data/functions/__pycache__
 handlers/__pycache__
 logs.log
+backup

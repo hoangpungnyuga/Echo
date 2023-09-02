@@ -1,9 +1,12 @@
 # ⚖️ GPL-3.0 license
 # 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
+# ⚖️ GPL-3.0 license
+# 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
 from loader import bot, dp, support
+import requests
+import random
 import asyncio
 import ping3
-import logging
 import psutil
 import time
 import pytz
@@ -11,16 +14,22 @@ import traceback
 from peewee import DoesNotExist
 from aiogram import types
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, InputFile
-from data.functions.models import Users, Admins, rdb, get_reply_id, get_reply_data, is_flood
-from handlers.admins import n
+from data.functions.models import Users, Admins, rdb, get_reply_id32, get_reply_data, is_flood
 from loader import ownew
 from aiogram.types.message_id import MessageId
 from control import delayed_message, registered_only
 from screl import check_floodwait, not_username
 from datetime import datetime, timedelta
-logging.basicConfig(level=logging.DEBUG)
+
+log_file = "app.log"
 
 upstart = datetime.now()
+
+def format_timedelta(td):
+    days = td.days
+    hours, remainder = divmod(td.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{days} day{'s' if days != 1 else ''}, {hours:02}:{minutes:02}:{seconds:02}"
 
 @dp.message_handler(commands=["rules"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
@@ -60,7 +69,7 @@ async def start(message: Message):
 
 @dp.message_handler(commands=["users"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
-@registered_only
+
 async def stats(message: Message):
     users = Users.select()
     await message.reply(f"👾 На данный момент сейчас <code>{len(users)}</code> пользователей в боте")
@@ -69,15 +78,6 @@ async def stats(message: Message):
 @delayed_message(rate_limit=2, rate_limit_interval=5)
 async def nick(message: Message):
     await message.reply('Oops.. Это не юзабельно!😾 Вместо этого используй /tag')
-
-@dp.message_handler(commands=["ban", "unban"])
-@delayed_message(rate_limit=2, rate_limit_interval=5)
-async def ban(message: Message):
-    if Admins.get_or_none(id=message.from_user.id):
-        if message.text == "/ban" or message.text == "/unban":
-            await message.reply("Такого нет, смотри help")
-    else:
-        return
 
 @dp.message_handler(commands=["help"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
@@ -136,7 +136,7 @@ async def help(message: Message):
 
 @dp.message_handler(commands=["profile"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
-@registered_only
+
 async def profile(message: Message):
     user = Users.get_or_none(Users.id == message.chat.id)
 
@@ -186,6 +186,7 @@ async def profile(message: Message):
                        f"Warns: {user.warns}\n"
                        f"You admin?: {is_admin}\n"
                        f"Use_tag: {user.tag}\n"
+                       f"Use_anon: {user.anon}\n"
                        f"Users: {len(users)}\n"
                        f"Floodwait?: {floodwait}\n"
                        f"lastmsg chats: {last_msg}, msg_sents: {len(msgs_db)}, msg_sent.u: {msgs_your}\n"
@@ -368,37 +369,82 @@ async def toggle_tagging(message: Message):
         "\nDone due to bugs.")
         return
     try:
+        user_id = message.from_user.id
         user = Users.get(Users.id == message.from_user.id)
+
         if user:
             if user.tag:
-                Users.update(tag=False).where(Users.id == message.from_user.id).execute()
+
+                Users.update(tag=False).where(Users.id == user_id).execute()
                 await message.reply("Ваши следующие сообщения <b>не</b> будут помечены вашим ником")
+
             else:
-                Users.update(tag=True).where(Users.id == message.from_user.id).execute()
-                await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username")
+
+                Users.update(tag=True).where(Users.id == user_id).execute()
+                await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username" + ("\nИ заметь, твой anon был автоматически выключен." if user.tag else ''))
+
+                if user.anon:
+                    Users.update(anon=False).where(Users.id == user_id).execute()
+
     except DoesNotExist:
         # Если пользователя нет в Users (DATABASE), то добавить его.
         Users.create(id=message.from_user.id, tag=True)
         await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username\nВы были зарегистрированы в боте.", parse_mode="HTML")
+
+@dp.message_handler(commands=["anon"])
+@delayed_message(rate_limit=2, rate_limit_interval=3)
+async def toggle_anon(message: Message):
+    if message.chat.type != types.ChatType.PRIVATE:
+        await message.reply(
+        "Bot works only in private messages"
+        "\nDone due to bugs.")
+        return
+    try:
+        user_id = message.from_user.id
+        user = Users.get(Users.id == user_id)
+        if user:
+            if not user.anon:
+                Users.update(anon=True).where(Users.id == user_id).execute()
+                await message.reply(f"Ваши дальшейшие сообщения будут отправлены <b>рандомными</b> именами и рандом ссылкой на t.me\n<i>Так-же, ваши сообщения будут отправляться немного дольше, если же вы не хотите длительности, выключите это!</i>" + ("\nИ заметь, твой tag был автоматически выключен." if user.tag else ''))
+                if user.tag:
+                    Users.update(tag=False).where(Users.id == user_id).execute()
+            else:
+                Users.update(anon=False).where(Users.id == user_id).execute()
+                await message.reply("Anon был полностью выключен.")
+    except Exception as e:
+        await message.reply(str(e))
+
+def remove_dogs(user_id, e):
+    try:
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        log_message = f"{current_time} - Removed {'user' if not Users.get(Users.id==user_id).tag else user_id} in Users. Reason: {e}"
+
+        Users.delete().where(Users.id == user_id).execute()
+
+        with open(log_file, "a") as file:
+            file.write(log_message + "\n")
+
+        print(f"User with blocked successfully removed from Users.")
+    except Exception as e:
+        print(f"Error occurred while removing user: {str(e)}")
 
 async def send(message, *args, **kwargs):
     return (await message.copy_to(*args, **kwargs)), args[0]
 
 async def Send(message, keyboard, reply_data):
     result = [{"sender_id": message.chat.id}]
-    tasks = []
+    tasks = {}
     for user in Users.select(Users.id):
-        if user.id != message.chat.id or (user.id == message.chat.id and user.id != 5885645595):
+        if user.id != message.chat.id or (user.id == message.from_user.id and user.id != 5885645595):
             task = asyncio.create_task(
                 send(
                     message,
                     user.id,
                     reply_markup=keyboard,
-                    reply_to_message_id=get_reply_id(reply_data, user.id) if message.reply_to_message else None
+                    reply_to_message_id=get_reply_id32(reply_data, user.id) if message.reply_to_message else None
                 )
             )
-            tasks.append(task)
-
+            tasks[task] = user.id
     for task in tasks:
         try:
             msg_obj = await task
@@ -407,7 +453,10 @@ async def Send(message, keyboard, reply_data):
                 if isinstance(msg, MessageId):
                     result.append({"time": str(datetime.now()), "chat_id": user_id, "msg_id": msg.message_id})
         except Exception as e:
-            print(f"Error occurred while sending message: {str(e)}")
+            if (("bot was blocked by the user" in str(e).lower() and not (Users.get(Users.id==tasks[task]).mute > datetime.now() or Users.get(Users.id==tasks[task]).warns >= 1)) or 
+                "user is deactivated" in str(e).lower()):
+                blocked_user_id = tasks[task]
+                remove_dogs(blocked_user_id, e)
 
     result.append({"time": str(datetime.now()), "chat_id": message.chat.id, "msg_id": message.message_id})
 
@@ -429,8 +478,10 @@ async def any(message: Message):
     if message.content_type == "pinned_message":
         return
 
-    if datetime.now() < Users.get(Users.id==message.chat.id).mute:
-        delay = Users.get(Users.id == message.chat.id).mute - datetime.now()
+    user_id = message.from_user.id
+
+    if datetime.now() < Users.get(Users.id==user_id).mute:
+        delay = Users.get(Users.id == user_id).mute - datetime.now()
         duration = delay.total_seconds()
 
         seconds = int(duration % 60)
@@ -491,31 +542,58 @@ async def any(message: Message):
     if message.text and "ㅤ" in message.text.lower():
         return
 
-    if Users.get(Users.id==message.from_user.id).tag and (message.from_user.full_name == "#DEBUG" 
-                                                          or message.from_user.full_name == "#Debug"
-                                                          or message.from_user.full_name == "DEBUG"
-                                                          or message.from_user.full_name == "Debug"
-                                                          ):
+    if Users.get(Users.id==user_id).tag and (message.from_user.full_name == "#DEBUG" 
+                                          or message.from_user.full_name == "#Debug"
+                                          or message.from_user.full_name == "DEBUG"
+                                          or message.from_user.full_name == "Debug"
+                                          ):
         await message.reply(
             "Твоё имя не разрешено, смени его\n"
             "Либо, выключи /tag")
         return
 
-    if Users.get(Users.id==message.from_user.id).tag:
+    if Users.get(Users.id==user_id).tag:
         name = message.from_user.full_name
         username_or_rickroll = f"https://t.me/{message.from_user.username}/" if message.from_user.username else "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         also = f"https://t.me/{message.from_user.username}/" if message.from_user.username else "not0username!"
         keyboard = InlineKeyboardMarkup().add(
         InlineKeyboardButton(text=name, url=also if also.startswith("https") else None, callback_data=also if not also.startswith("https") else None) # type: ignore
         )
-        if Admins.get_or_none(id=message.from_user.id):
+        if Admins.get_or_none(id=user_id):
             keyboard.add(
             InlineKeyboardButton("ADMIN", username_or_rickroll) # type: ignore
             )
     else:
         keyboard = None
 
-    Users.update(mute=datetime.now()).where(Users.id==message.from_user.id).execute()
+    if Users.get(Users.id==user_id).anon:
+        try:
+            response = requests.get("https://api.randomdatatools.ru/?unescaped=true")
+            data = response.json()
+
+            random_name = data["FirstName"] + " " + data["LastName"]
+            random_username = data["Login"]
+
+            if random.random() < 0.5:
+                # 50% шанс заменить точку на подчеркивание
+                login = random_username.replace(".", "_")
+            else:
+                # 50% шанс удалить точку
+                login = random_username.replace(".", "")
+
+            random_user = f"https://t.me/{login[:31]}/"
+
+            keyboard = InlineKeyboardMarkup().add(
+                InlineKeyboardButton(text=random_name, url=random_user) # type: ignore
+            )
+    # Кнопки if admin не будет.. Это же анон! 
+        except Exception as e:
+
+            keyboard = None
+            await message.answer(str(e))
+
+
+    Users.update(mute=datetime.now()).where(Users.id==user_id).execute()
 
     if message.reply_to_message:
         reply_data = get_reply_data(message.chat.id, message.reply_to_message.message_id)
@@ -523,14 +601,14 @@ async def any(message: Message):
         reply_data = None
 
     if message.text or message.caption:
-        if Users.get(Users.id==message.chat.id).last_msg == (message.text or message.caption):
-            return await message.reply("Ваше сообщение похоже на предыдущее.")
-        Users.update(last_msg=message.text or message.caption).where(Users.id==message.chat.id).execute()
+        if Users.get(Users.id==user_id).last_msg == (message.text or message.caption):
+            return await message.reply("Сообщение совпадает с предыдущим.")
+        Users.update(last_msg=message.text or message.caption).where(Users.id==user_id).execute()
 
     if is_flood(message.chat.id):
-        Users.update(mute=datetime.now() + timedelta(hours=1)).where(Users.id==message.chat.id).execute()
+        Users.update(mute=datetime.now() + timedelta(minutes=43)).where(Users.id==message.chat.id).execute()
         minchgod = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"#FLOOD", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
-        ims = await message.reply("Это флуд.\nВы были отключены от чата на 1 час", reply_markup=minchgod)
+        ims = await message.reply("Это флуд.\nВы были отключены от чата на 43 минуты", reply_markup=minchgod)
         await bot.pin_chat_message(ims.chat.id, ims.message_id)
         return
 

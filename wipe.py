@@ -11,6 +11,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 class WipeConfirmation(StatesGroup):
     CONFIRMATION = State()
 
+file_path = 'data/replies.json'
 
 def delete_file(file_path):
     if not os.path.exists(file_path):
@@ -22,7 +23,7 @@ def delete_file(file_path):
 async def create_file(file_path):
     data = {
         "messages": [
-            # Это нужно чтобы бот не возращал data/replies.json
+            
         ]
     }
     with open(file_path, 'w') as file:
@@ -43,12 +44,11 @@ async def confirm_wipe(message: types.Message):
 async def process_wipe_confirmation(callback_query: types.CallbackQuery, state: FSMContext):
     await wipe(callback_query, state, callback_query.message)
 
-
 async def wipe(call: types.CallbackQuery, state: FSMContext, message: types.Message):
     if call.data == 'confirm': # Если нажали да
         try:
-            delete_file("data/replies.json") # Удаляем файл
-            await create_file("data/replies.json") # Создаем файл
+            delete_file(file_path) # Удаляем файл
+            await create_file(file_path) # Создаем файл
             await wipe_success(call)
             await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id) # Удаляем сообщение
         except FileNotFoundError:
@@ -64,14 +64,11 @@ async def wipe(call: types.CallbackQuery, state: FSMContext, message: types.Mess
 
     await state.finish()
 
-
 async def wipe_success(call: types.CallbackQuery):
     await call.answer("Выполнен Wipe.", show_alert=False)
 
-
 async def wipe_error(call: types.CallbackQuery):
     await call.answer("Error. Файл не найден", show_alert=True)
-
 
 async def wipe_cancel(call: types.CallbackQuery):
     await call.answer("Окей, отменено.", show_alert=False)

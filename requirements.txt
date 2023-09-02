@@ -5,3 +5,5 @@ ping3
 colorama
 pytz
 psutil
+psycopg2-binary
+pyzipper
