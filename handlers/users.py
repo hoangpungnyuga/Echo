@@ -362,9 +362,9 @@ async def any(message: Message):
         Users.update(last_msg=message.text or message.caption).where(Users.id==user_id).execute()
 
     if is_flood(message.chat.id):
-        Users.update(mute=datetime.now() + timedelta(minutes=15)).where(Users.id==message.chat.id).execute()
+        Users.update(mute=datetime.now() + timedelta(minutes=3)).where(Users.id==message.chat.id).execute()
         minchgod = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"#FLOOD", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
-        ims = await message.reply("Это флуд.\nВы были отключены от чата на 15 минуты", reply_markup=minchgod)
+        ims = await message.reply("Это флуд.\nВы были отключены от чата на 3 минуты", reply_markup=minchgod)
         await bot.pin_chat_message(ims.chat.id, ims.message_id)
         return
 
