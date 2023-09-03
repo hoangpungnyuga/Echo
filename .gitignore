@@ -7,3 +7,7 @@ data/functions/__pycache__
 handlers/__pycache__
 logs.log
 backup
+data/db.sql
+data/replies.json
+data/config.ini
+app.log

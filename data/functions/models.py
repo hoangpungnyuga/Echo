@@ -1,62 +1,34 @@
 # ⚖️ GPL-3.0 license
 # 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
-import time
-from playhouse.postgres_ext import PostgresqlExtDatabase
-from peewee import Model, BooleanField, DateTimeField, IntegerField, TextField, BigAutoField
+from peewee import SqliteDatabase, Model, PrimaryKeyField, BooleanField, DateTimeField, TextField, IntegerField
 from lightdb import LightDB
 from datetime import datetime, timedelta
 from collections import defaultdict
 
+db = SqliteDatabase("data/db.sql")
 rdb = LightDB("data/replies.json")
 control = defaultdict(list)
 
-Connect = {
-    "database": 'echo',             # Имя вашей базы
-    "user":     'hope',             # Имя пользователя для доступа к базе
-    "password": 'mirai',            # Password от пользователя user
-    "host":     '35.206.135.113',   # IP адрес хоста, либо localhost
-    "port":      5432               # Port для подключения
-}
-
-db = PostgresqlExtDatabase(**Connect)
-
-def connect_to_database():
-    try:
-        start_time = time.time()
-        db.connect()
-        end_time = time.time()
-        connection_time = (end_time - start_time) * 1000
-        print(f"Connected to the database in {connection_time:.2f} ms")
-        return connection_time
-    except Exception as e:
-        print(f"Failed to connect to the database: {e}")
-        return None
-
-
 class BaseModel(Model):
-    class Meta:
-        database = db
+	class Meta:
+		database = db
 
 class Users(BaseModel):
-    id = BigAutoField()
-    ban = BooleanField(default=False)
-    mute = DateTimeField(default=datetime.now)
-    warns = IntegerField(default=0)
-    last_msg = TextField(null=True)
-    tag = BooleanField(default=False)
-    anon = BooleanField(default=False)
+	id = PrimaryKeyField()
+	ban = BooleanField(default=False)
+	mute = DateTimeField(default=datetime.now())
+	name = TextField(null=True)
+	warns = IntegerField(default=0)
+	last_msg = TextField(null=True)
+	tag = BooleanField(default=False)
 
 class Admins(BaseModel):
-    id = BigAutoField(primary_key=True)
-    name = TextField(default="Модератор")
-    rights = TextField(default="mute;warn")
+	id = PrimaryKeyField()
+	name = TextField(default="Модератор")
+	rights = TextField(default="mute;warn")
 
-class Settings(BaseModel):
-    kicked_dogs = BooleanField(default=True)
-
-# Создание таблиц в PostgreSQL
 with db:
-    db.create_tables([Users, Admins, Settings])
+	db.create_tables([Users, Admins])
 
 def get_reply_data(chat_id, msg_id):
 	for msg in rdb.get("messages", []):

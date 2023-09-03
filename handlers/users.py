@@ -3,19 +3,12 @@
 # ⚖️ GPL-3.0 license
 # 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
 from loader import bot, dp, support
-import requests
-import random
 import asyncio
-import ping3
-import psutil
 import time
-import pytz
-import traceback
 from peewee import DoesNotExist
 from aiogram import types
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, InputFile
 from data.functions.models import Users, Admins, rdb, get_reply_id32, get_reply_data, is_flood
-from loader import ownew
 from aiogram.types.message_id import MessageId
 from control import delayed_message, registered_only
 from screl import check_floodwait, not_username
@@ -55,7 +48,7 @@ async def start(message: Message):
         url = 't.me/sensxn/6' # Тут тоже менять на своё
         se = (f'Салам, <i>{USER}</i>!'
              '\nТы попал в Echo<a href="https://mastergroosha.github.io/telegram-tutorial/docs/lesson_01/">&#185;</a>'
-          '\n<b>Вы не зарегистрированы в этом боте, а значит вы не можете им пользоваться.'
+             '\n<b>Вы не зарегистрированы в этом боте, а значит вы не можете им пользоваться.'
             f'\nЧто это? Зачем это? см<a href="{url}">&#178;</a>'
              '\nТак же, для обширного ознакомления существует /help'
              '\nПожалуйста, подтвердите свою регистрацию, и убедитесь что вы прочитали наши правила бота, /rules</b>')
@@ -65,19 +58,13 @@ async def start(message: Message):
                            '\nЭто эхо-бот от создателей <b>ILNAZ GOD</b> и <b>Ким</b>💖💖.'
                          '\n\nТвои сообщения будут отправляться всем пользователям Echo.'
                          '\n\nДля получения более подробной информации, пожалуйста, ознакомьтесь с правилами.'
-                        '\n\n(Это точно Echo-to-All?) Точнее если быть -- <b>Echo to Kim</b>❤️)')
+                         '\n\n(Это точно Echo-to-All?) Точнее если быть -- <b>Echo to Kim</b>❤️)')
 
 @dp.message_handler(commands=["users"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
-
-async def stats(message: Message):
+async def users(message: Message):
     users = Users.select()
     await message.reply(f"👾 На данный момент сейчас <code>{len(users)}</code> пользователей в боте")
-
-@dp.message_handler(commands=["nick"])
-@delayed_message(rate_limit=2, rate_limit_interval=5)
-async def nick(message: Message):
-    await message.reply('Oops.. Это не юзабельно!😾 Вместо этого используй /tag')
 
 @dp.message_handler(commands=["help"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
@@ -85,7 +72,7 @@ async def help(message: Message):
     user = Users.get_or_none(Users.id == message.chat.id)
     admin = Admins.get_or_none(id=message.chat.id)
     username = message.from_user.mention if message.from_user.username else "<i>твой юзер</i>"
-    IF = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Удалить", callback_data="del"))  # type: ignore
+    keyboard = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Удалить", callback_data="del"))  # type: ignore
     WB = '<b>Я буду отправлять твои сообщения всем юзерам.</b>\n\n'
     WB += '<b>⌖ Все, что вас может интересовать:</b>\n'
     WB += '<b>></b> /start, /rules\n\n'
@@ -98,15 +85,12 @@ async def help(message: Message):
         WB += '/profile - <i>Твой профиль в боте</i>\n'
         WB += f'/tag - <i>On/Off кнопку с ссыланием на</i> {username}\n'
         WB += '/warns - <i>Сколько у тебя на данный момент варнов</i>\n'
-        WB += '/life - <i>Состояние сервера</i>\n'
-        WB += '/users - <i>Сколько юзеров в боте</i>\n'
-        WB += '/ping - <i>Пинг от сервера до телеграм серверов, DNS</i>'		
+        WB += '/users - <i>Сколько юзеров в боте</i>\n'		
         if admin:
             right = Admins.get(id=message.from_user.id).rights
             WB += '\n\n<b>Команды для <u>админов</u>:</b>\n'
             WB += '/admin - <i>Узнать какие есть права к командам</i>\n'
-            if "view" in right:
-                WB += '/wipe - <i>Удалить файл сообщений в DB бота</i> <b>【view】</b>\n'
+            WB += '/wipe - <i>Удалить файл сообщений в DB бота</i> <b>【view】</b>\n'
             WB += '/restart - <i>Рестарт бота</i> <b>【ban】</b>\n'
             WB += '/pin &lt;reply&gt; - <i>Закрепить сообщение</i> <b>【ban】</b>\n'
             WB += '/unpin &lt;reply&gt; - <i>Открепить сообщение</i> <b>【ban】</b>\n'
@@ -132,7 +116,7 @@ async def help(message: Message):
                 WB += ';/unstaff'
             WB += '\n\n<b>А это <a href="https://t.me/+Fywa1MPQ6MpkMGEy"><u>LOG CHAT</u></a> бота</b>'
 
-    await message.reply(WB, reply_markup=IF, parse_mode="HTML")
+    await message.reply(WB, reply_markup=keyboard, parse_mode="HTML")
 
 @dp.message_handler(commands=["profile"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
@@ -186,10 +170,10 @@ async def profile(message: Message):
                        f"Warns: {user.warns}\n"
                        f"You admin?: {is_admin}\n"
                        f"Use_tag: {user.tag}\n"
-                       f"Use_anon: {user.anon}\n"
+                       f"Msg Sent You: {msgs_your}\n"
                        f"Users: {len(users)}\n"
                        f"Floodwait?: {floodwait}\n"
-                       f"lastmsg chats: {last_msg}, msg_sents: {len(msgs_db)}, msg_sent.u: {msgs_your}\n"
+                       f"lastmsg chats: {last_msg}, msg_sents: {len(msgs_db)}\n"
                        f"lastmsg your time: {user_date}")
 
 @dp.message_handler(commands=['warns'])
@@ -199,225 +183,30 @@ async def warns(message: types.Message):
     user = Users.get_or_none(Users.id == message.chat.id)
     await message.reply(f'Warns: {user.warns}.\n3 варна - мут на 7 часов.')
 
-@dp.message_handler(commands=['ping'])
-@delayed_message(rate_limit=1, rate_limit_interval=10)
-@registered_only
-async def ping_telegram(message: types.Message):
-    pings = await message.reply("🌈PONG!🌈\n\n🏳️‍🌈Happy Pride Day! The U.S. reaffirms LGBTQI+ rights are human rights and no group should be excluded from those protections, regardless of race, ethnicity, sex, gender identity, sexual orientation, sex characteristics, disability status, age, religion or belief. The struggle to end violence, discrimination, criminalization, and stigma against LGBTQI+ persons is a global challenge.🏳️‍🌈")
-    try:
-        dc1 = ping3.ping('149.154.175.53', unit="ms", timeout=1)
-        dc2 = ping3.ping('149.154.167.51', unit="ms", timeout=1)
-        dc3 = ping3.ping('149.154.175.100', unit="ms", timeout=1)
-        dc4 = ping3.ping('149.154.167.91', unit="ms", timeout=1)
-        dc5 = ping3.ping('91.108.56.130', unit="ms",timeout=1)
-        one = ping3.ping('1.1.1.1', unit="ms", timeout=1)
-        google = ping3.ping('8.8.8.8', unit="ms", timeout=1)
-        quad9 = ping3.ping('9.9.9.9', unit="ms", timeout=1)
-        opendns = ping3.ping('208.67.222.222', unit="ms", timeout=1)
-        cleanbrowsing = ping3.ping('185.228.168.9', unit="ms", timeout=1)
-        comodo = ping3.ping('8.26.56.26', unit="ms", timeout=1)
-        level3 = ping3.ping('209.244.0.3', unit="ms", timeout=1)
-        opennic = ping3.ping('134.195.4.2', unit="ms", timeout=1)
-#		yandex = ping3.ping('77.88.8.8', unit="ms", timeout=1)
-        adguard = ping3.ping('94.140.14.14', unit="ms", timeout=1)
-        watch = ping3.ping('84.200.69.80', unit="ms", timeout=1)
-        verisign = ping3.ping('64.6.64.6', unit="ms", timeout=1)
-        norton = ping3.ping('199.85.126.20', unit="ms", timeout=1)
-        safe = ping3.ping('195.46.39.39', unit="ms", timeout=1)
-        uncensored = ping3.ping('91.239.100.100', unit="ms", timeout=1)
-        freenom = ping3.ping('80.80.80.80', unit="ms", timeout=1)
-    
-        XH = '🏓 Пинг телеграм дата центров:\n'
-        XH += f'🇺🇸DC1 MIA, Miami FL, USA: <code>{dc1}</code> ms\n' if dc1 else '🇺🇸DC1 MIA, Miami FL, USA: <b>failed:(</b>\n'
-        XH += f'🇳🇱DC2 AMS, Amsterdam, NL: <code>{dc2}</code> ms\n' if dc2 else '🇳🇱DC2 AMS, Amsterdam, NL: <b>failed:(</b>\n'
-        XH += f'🇺🇸DC3* MIA, Miami FL, USA: <code>{dc3}</code> ms\n' if dc3 else '🇺🇸DC3* MIA, Miami FL, USA: <b>failed:(</b>\n'
-        XH += f'🇳🇱DC4 AMS, Amsterdam, NL: <code>{dc4}</code> ms\n' if dc4 else '🇳🇱DC4 AMS, Amsterdam, NL: <b>failed:(</b>\n'
-        XH += f'🇸🇬DC5 SIN, Singapore, SG: <code>{dc5}</code> ms\n' if dc5 else '🇸🇬DC5 SIN, Singapore, SG: <b>failed:(</b>\n'
-        XH += '\n🐘 DNS сервера:\n'
-        XH += f'🏳️‍🌈Cloudflare <i>1.1.1.1</i>: <code>{one}</code> ms\n' if one else '🌈Cloudflare <i>1.1.1.1</i>: <b>failed:(</b>\n'
-        XH += f'🏳️‍🌈Google <i>8.8.8.8</i>: <code>{google}</code> ms\n' if google else '🌈Google <i>8.8.8.8</i>: <b>failed:(</b>\n'
-        XH += f'🏳️‍🌈Quad9 <i>9.9.9.9</i>: <code>{quad9}</code> ms\n' if quad9 else '🌈Quad9 <i>9.9.9.9</i>: <b>failed:(</b>\n'
-        XH += f'🏳️‍🌈OpenDNS/Cisco <i>208.67.222.222</i>: <code>{opendns}</code> ms\n' if opendns else '🌈OpenDNS <i>208.67.222.222</i>: <b>failed:(</b>\n'
-        XH += f'🏳️‍🌈Cleanbrowsing <i>185.228.168.9</i>: <code>{cleanbrowsing}</code> ms\n' if cleanbrowsing else '🌈Cleanbrowsing <i>185.228.168.9</i>: <b>failed:(</b>\n'
-        XH += f'🏳️‍🌈Comodo Secure DNS <i>8.26.56.26</i>: <code>{comodo}</code> ms\n' if comodo else '🌈Comodo Secure DNS <i>8.26.56.26</i>: <b>failed:(</b>\n'
-        XH += f'🏳️‍🌈Level 3 <i>209.244.0.3</i>: <code>{level3}</code> ms\n' if level3 else '🌈Level 3 <i>209.244.0.3</i>: <b>failed:(</b>\n'
-        XH += f'🏳️‍🌈OpenNIC <i>134.195.4.2</i>: <code>{opennic}</code> ms\n' if opennic else '🌈OpenNIC <i>134.195.4.2</i>: <b>failed:(</b>\n'
-#		XH += f'🏳️‍🌈Yandex <i>77.88.8.8</i>: <code>{yandex}</code> ms\n' if yandex else '🌈Yandex <i>77.88.8.8</i>: <b>failed:(</b>\n'
-        XH += f'🏳️‍🌈AdGuard <i>94.140.14.14</i>: <code>{adguard}</code> ms\n' if adguard else '🌈AdGuard <i>94.140.14.14</i>: <b>failed:(</b>\n'
-        XH += f'🏳️‍🌈Watch <i>84.200.69.80</i>: <code>{watch}</code> ms\n' if watch else '🌈Watch <i>84.200.69.80</i>: <b>failed:(</b>\n'
-        XH += f'🏳️‍🌈Verisign <i>64.6.64.6</i>: <code>{verisign}</code> ms\n' if verisign else '🌈Verisign <i>64.6.64.6</i>: <b>failed:(</b>\n'
-        XH += f'🏳️‍🌈Norton ConnectSafe <i>199.85.126.20</i>: <code>{norton}</code> ms\n' if norton else '🌈Norton ConnectSafe <i>199.85.126.20</i>: <b>failed:(</b>\n'
-        XH += f'🏳️‍🌈SafeDNS <i>195.46.39.39</i>: <code>{safe}</code> ms\n' if safe else '🌈SafeDNS <i>195.46.39.39</i>: <b>failed:(</b>\n'
-        XH += f'🏳️‍🌈UncensoredDNS <i>91.239.100.100</i>: <code>{uncensored}</code> ms\n' if uncensored else '🌈UncensoredDNS <i>91.239.100.100</i>: <b>failed:(</b>\n'
-        XH += f'🏳️‍🌈FreeNom <i>80.80.80.80</i>: <code>{freenom}</code> ms\n' if freenom else '🌈Freenom <i>80.80.80.80</i>: <b>failed:(</b>\n'
-        SD = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Удалить", callback_data="del")) # type: ignore
-        await pings.edit_text(XH, reply_markup=SD, parse_mode="HTML")
-    except Exception:
-        error = traceback.format_exc()  # Получение полного сообщения об ошибке
-        EYE = InlineKeyboardMarkup().add(InlineKeyboardButton(text="🪄FIXED", callback_data="del")) # type: ignore
-        await pings.edit_text(f"Error:(\n\nСообщение об ошибке уже отправлено создателю бота\nВаш ID или username <b>НЕ БУДЕТ</b> передан в отчёте.")
-        ballin = (f"#ERROR\n\nКто-то из пользователей получил ошибку при отработке команды <code>{message.text}</code>\n\n🪄Traceback: <code>{error}</code>")
-        ayo = await bot.send_message(ownew, ballin, reply_markup=EYE)
-        await bot.pin_chat_message(ownew, ayo.message_id)
-
-@dp.message_handler(commands=["life"])
-@delayed_message(rate_limit=2, rate_limit_interval=9)
-@registered_only
-async def get_system_stats(message: types.Message):
-    hey = await message.reply("I'm counting..")
-    try:
-        user = Users.get_or_none(Users.id == message.from_user.id)
-        if user:
-            was = datetime.now()
-            uptime = was - upstart
-            start_time = time.monotonic()
-            formatted_uptime = str(uptime).split(".")[0]
-            if uptime.days > 0:
-                days = uptime.days
-                hours, remainder = divmod(uptime.seconds, 3600)
-                minutes, seconds = divmod(remainder, 60)
-            
-                formatted_days = f"{days} день" if days == 1 else f"{days} дня" if 2 <= days <= 4 else f"{days} дней"
-                formatted_hours = f"{hours} час" if hours == 1 else f"{hours} часа" if 2 <= hours <= 4 else f"{hours} часов"
-                formatted_minutes = f"{minutes} минута" if minutes == 1 else f"{minutes} минуты" if 2 <= minutes <= 4 else f"{minutes} минут"
-                formatted_seconds = f"{seconds} секунда" if seconds == 1 else f"{seconds} секунды" if 2 <= seconds <= 4 else f"{seconds} секунд"
-            
-                formatted_uptime = f"{formatted_days} {formatted_hours} {formatted_minutes} {formatted_seconds}"
-            elif uptime.seconds >= 3600:
-                hours = uptime.seconds // 3600
-                minutes = (uptime.seconds % 3600) // 60
-                seconds = uptime.seconds % 60
-            
-                formatted_hours = f"{hours} час" if hours == 1 else f"{hours} часа" if 2 <= hours <= 4 else f"{hours} часов"
-                formatted_minutes = f"{minutes} минута" if minutes == 1 else f"{minutes} минуты" if 2 <= minutes <= 4 else f"{minutes} минут"
-                formatted_seconds = f"{seconds} секунда" if seconds == 1 else f"{seconds} секунды" if 2 <= seconds <= 4 else f"{seconds} секунд"
-            
-                formatted_uptime = f"{formatted_hours} {formatted_minutes} {formatted_seconds}"
-            elif uptime.seconds >= 60:
-                minutes = uptime.seconds // 60
-                seconds = uptime.seconds % 60
-            
-                formatted_minutes = f"{minutes} минута" if minutes == 1 else f"{minutes} минуты" if 2 <= minutes <= 4 else f"{minutes} минут"
-                formatted_seconds = f"{seconds} секунда" if seconds == 1 else f"{seconds} секунды" if 2 <= seconds <= 4 else f"{seconds} секунд"
-            
-                formatted_uptime = f"{formatted_minutes} {formatted_seconds}"
-            else:
-                formatted_uptime = f"{uptime.seconds} секунд"
-
-            cpu_percent = psutil.cpu_percent()
-            mem_info = psutil.virtual_memory()
-            mem_percent = mem_info.percent
-            mem_free_percent = mem_info.available * 100 / mem_info.total
-            swap_info = psutil.swap_memory()
-            swap_percent = swap_info.percent
-            swap_free_percent = swap_info.free * 100 / swap_info.total
-            disk_usage = psutil.disk_usage('/')
-            disk_percent = disk_usage.percent
-            disk_free_percent = 100 - disk_percent
-            tz = pytz.timezone('Europe/Moscow') # Менять на своё усмотрение.
-            now_eest = datetime.now(tz)
-            format_date = now_eest.strftime("%Y/%m/%d %H:%M:%S")
-            end_time = time.monotonic()
-            vol_duration = end_time - start_time
-            if vol_duration < 1:
-                vol_duration_str = f"{int(vol_duration * 1000)} ms"
-            elif vol_duration < 60:
-                vol_duration_str = f"{int(vol_duration)} s"
-            else:
-                vol_duration_min = int(vol_duration // 60)
-                vol_duration_sec = int(vol_duration % 60)
-                vol_duration_str = f"{vol_duration_min} m {vol_duration_sec} s"
-            google = ping3.ping('8.8.8.8', unit="ms", timeout=1) or "failed:(" # DNS Google.
-
-            response = f"Status machine life🕊\nCommand completed in {vol_duration_str}.\n\n"
-            try:
-                response += f"Time ping <code>8.8.8.8</code> completed in <code>{google:.3f}</code>.ms\n"
-            except Exception as e:
-                response += f"Time ping <code>8.8.8.8</code> <b>ERROR</b>:(\n`<code>{e}</code>`\n"
-        
-            if cpu_percent > 97: response += f"‼️CPU: {cpu_percent}%‼️\n"
-            else: response += f">CPU: {cpu_percent}%\n"
-        
-            if mem_percent > 96: response += f"‼️RAM: {mem_percent:.1f}% / Free: {mem_free_percent:.1f}%‼️\n"
-            else: response += f">RAM: {mem_percent:.1f}% / Free: {mem_free_percent:.1f}%\n"
-        
-            if not swap_percent == 0: response += f">Swap: {swap_percent:.1f}% / Free: {swap_free_percent:.1f}%\n"
-            else: pass
-        
-            if disk_percent > 98: response += f"‼️Disk Usage: {disk_percent:.1f}% / Free: {disk_free_percent:.1f}%‼️\n"
-            else: response += f">Disk Usage: {disk_percent:.1f}% / Free: {disk_free_percent:.1f}%\n"
-
-            response += f"`Uptime bot: {formatted_uptime}\n"
-            response += f"`Current date and time in RU Donetsk: {format_date}"
-            DS = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Удалить", callback_data="del")) # type: ignore
-            await hey.edit_text(response, reply_markup=DS)
-    except Exception:
-        me = 1898974239  # Тут меняете на свой ID куда надо отправить отчёт
-        error = traceback.format_exc()  # Получение полного сообщения об ошибке
-        EYE = InlineKeyboardMarkup().add(InlineKeyboardButton(text="🪄FIXED", callback_data="del")) # type: ignore
-        await hey.edit_text(f"Error:(\n\nСообщение об ошибке уже отправлено создателю бота\nВаш ID или username <b>НЕ БУДЕТ</b> передан в отчёте.")
-        ballin = (f"#ERROR_LIFE\n\nКто-то из пользователей получил ошибку при отработке команды <code>{message.text}</code>\n\n🪄Traceback: <code>{error}</code>")
-        ayo = await bot.send_message(me, ballin, reply_markup=EYE)
-        await bot.pin_chat_message(me, ayo.message_id)
-
 @dp.message_handler(commands=["tag"])
 @delayed_message(rate_limit=2, rate_limit_interval=3)
 async def toggle_tagging(message: Message):
     if message.chat.type != types.ChatType.PRIVATE:
-        await message.reply(
-        "Bot works only in private messages"
-        "\nDone due to bugs.")
         return
-    try:
-        user_id = message.from_user.id
-        user = Users.get(Users.id == message.from_user.id)
 
+    try:
+        user = Users.get(Users.id == message.from_user.id)
         if user:
             if user.tag:
-
-                Users.update(tag=False).where(Users.id == user_id).execute()
+                Users.update(tag=False).where(Users.id == message.from_user.id).execute()
                 await message.reply("Ваши следующие сообщения <b>не</b> будут помечены вашим ником")
-
             else:
-
-                Users.update(tag=True).where(Users.id == user_id).execute()
-                await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username" + ("\nИ заметь, твой anon был автоматически выключен." if user.tag else ''))
-
-                if user.anon:
-                    Users.update(anon=False).where(Users.id == user_id).execute()
-
+                Users.update(tag=True).where(Users.id == message.from_user.id).execute()
+                await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username")
     except DoesNotExist:
         # Если пользователя нет в Users (DATABASE), то добавить его.
         Users.create(id=message.from_user.id, tag=True)
         await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username\nВы были зарегистрированы в боте.", parse_mode="HTML")
 
-@dp.message_handler(commands=["anon"])
-@delayed_message(rate_limit=2, rate_limit_interval=3)
-async def toggle_anon(message: Message):
-    if message.chat.type != types.ChatType.PRIVATE:
-        await message.reply(
-        "Bot works only in private messages"
-        "\nDone due to bugs.")
-        return
-    try:
-        user_id = message.from_user.id
-        user = Users.get(Users.id == user_id)
-        if user:
-            if not user.anon:
-                Users.update(anon=True).where(Users.id == user_id).execute()
-                await message.reply(f"Ваши дальшейшие сообщения будут отправлены <b>рандомными</b> именами и рандом ссылкой на t.me\n<i>Так-же, ваши сообщения будут отправляться немного дольше, если же вы не хотите длительности, выключите это!</i>" + ("\nИ заметь, твой tag был автоматически выключен." if user.tag else ''))
-                if user.tag:
-                    Users.update(tag=False).where(Users.id == user_id).execute()
-            else:
-                Users.update(anon=False).where(Users.id == user_id).execute()
-                await message.reply("Anon был полностью выключен.")
-    except Exception as e:
-        await message.reply(str(e))
-
 def remove_dogs(user_id, e):
     try:
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        log_message = f"{current_time} - Removed {'user' if not Users.get(Users.id==user_id).tag else user_id} in Users. Reason: {e}"
+        log_message = f"{current_time} - Removed user in Users. Reason: {e}"
 
         Users.delete().where(Users.id == user_id).execute()
 
@@ -505,7 +294,7 @@ async def any(message: Message):
         if seconds > 0:
             duration_string += f"{seconds} секунд{'а' if seconds == 1 else ''}"
 
-        umute = InlineKeyboardMarkup().add(InlineKeyboardButton(text="#MUTE", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
+        umute = InlineKeyboardMarkup().add(InlineKeyboardButton(text="Mute .", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
         return await message.reply(f"Ты сможешь писать только через {duration_string}", reply_markup=umute)
     if message.text and (
         "цп" in message.text.lower()
@@ -566,35 +355,6 @@ async def any(message: Message):
     else:
         keyboard = None
 
-    if Users.get(Users.id==user_id).anon:
-        try:
-            response = requests.get("https://api.randomdatatools.ru/?unescaped=true")
-            data = response.json()
-
-            random_name = data["FirstName"] + " " + data["LastName"]
-            random_username = data["Login"]
-
-            if random.random() < 0.5:
-                # 50% шанс заменить точку на подчеркивание
-                login = random_username.replace(".", "_")
-            else:
-                # 50% шанс удалить точку
-                login = random_username.replace(".", "")
-
-            random_user = f"https://t.me/{login[:31]}/"
-
-            keyboard = InlineKeyboardMarkup().add(
-                InlineKeyboardButton(text=random_name, url=random_user) # type: ignore
-            )
-    # Кнопки if admin не будет.. Это же анон! 
-        except Exception as e:
-
-            keyboard = None
-            await message.answer(str(e))
-
-
-    Users.update(mute=datetime.now()).where(Users.id==user_id).execute()
-
     if message.reply_to_message:
         reply_data = get_reply_data(message.chat.id, message.reply_to_message.message_id)
     else:
@@ -606,9 +366,9 @@ async def any(message: Message):
         Users.update(last_msg=message.text or message.caption).where(Users.id==user_id).execute()
 
     if is_flood(message.chat.id):
-        Users.update(mute=datetime.now() + timedelta(minutes=43)).where(Users.id==message.chat.id).execute()
+        Users.update(mute=datetime.now() + timedelta(minutes=15)).where(Users.id==message.chat.id).execute()
         minchgod = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"#FLOOD", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
-        ims = await message.reply("Это флуд.\nВы были отключены от чата на 43 минуты", reply_markup=minchgod)
+        ims = await message.reply("Это флуд.\nВы были отключены от чата на 15 минуты", reply_markup=minchgod)
         await bot.pin_chat_message(ims.chat.id, ims.message_id)
         return
 
@@ -629,3 +389,5 @@ async def any(message: Message):
         send_duration_str = f"{send_duration_min} минут {send_duration_sec} секунд"
 
     await hey.edit_text(f"Твоё сообщение было отправлено {len(users)} пользователям бота за <b>{send_duration_str}</b>", parse_mode="HTML")
+
+    Users.update(mute=datetime.now()).where(Users.id==user_id).execute()

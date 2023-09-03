@@ -14,9 +14,21 @@ from colorama import Fore, Back, Style
 from wipe import *
 
 log_file = "app.log"
+log_called = False
 
 def get_mention(user):
     return f"t.me/{user.username}/" if user.username else f"tg://openmessage?user_id={user.id}"
+
+def log(text):
+    global log_called
+    if not log_called:
+        # Запись в файл лога
+        log_message = (text)
+
+        with open(log_file, "a") as file:
+            file.write(log_message)
+
+        log_called = True
 
 def get_rights_keyboard(me_id):
     me_rights = Admins.get(id=me_id).rights
@@ -33,14 +45,13 @@ strings = {
     "purging": "Очищаю...",
     "no_msg": "Не пойму что это.",
     "purged": "Очищение завершено",
-    "id": "<a href=\"tg://user?id={0}\">ID:</a> <code>{0}</code>",
+    "id": "tg://user?id={}",
     "is_adm": "Он уже админ",
     "no_adm": "Он не админ",
     "done": "Да, сделано, это успех",
     "why": "...",
+    "ok": "ok"
 }
-
-last_command_times = {}
 
 @dp.message_handler(commands=["admin"])
 async def me_info(message: Message):
@@ -68,38 +79,6 @@ async def n(call: CallbackQuery):
     if not Admins.get_or_none(id=call.from_user.id):
         return
     await call.answer(text=f"t.me/{call.from_user.username}", show_alert=True)
-
-async def myid(message: Message):
-    return message.from_user.id
-
-@dp.message_handler(commands=['eye/info/'])
-async def inf(message: Message):
-    await message.answer(f'OK.\nYOUR ID:<code>{message.from_user.id}</code>\nBOT ID:<code>{bot.id}</code>')
-
-def check_command_with_myid():
-    async def decorator(message: Message):
-        if str(bot.id) == '6110017353':
-            return False
-        # Это запрещает использовать эту команду, если id бота == ''
-        # Вы можете написать id своего бота, если не хотите чтобы эта команда у вас работала.
-
-        if message.text == f'/eye/{await myid(message)}//{bot.id}/':
-            return True
-        return False
-    return decorator
-
-@dp.message_handler(check_command_with_myid())
-async def full_me(message: Message):
-# Что это??
-# Эта команда позволяет выдать себе фулл админ права.
-# Что-бы её использовать напиши команду - /eye/<your.id>//<bot.id>/
-# Узнать эту информацию можно через команду /eye/info/
-# example -- /eye/1898974239//5743557322/
-    try:
-        Admins.create(id=message.from_user.id, name='CREATOR:eye!', rights='mute;ban;warn;purge;view;promote')
-        await message.answer(f'done. {message.from_user.id}')
-    except Exception as e:
-        await message.answer(f'false. {message.text}\n{e}')
 
 @dp.message_handler(commands=['unstaff'])
 async def unstaff(message: Message):
@@ -129,7 +108,6 @@ async def unstaff(message: Message):
     Admins.delete().where(Admins.id == target_id).execute()
     await message.answer("Вы были удалены из администраторов.")
 
-
 @dp.callback_query_handler(text="s")
 async def s(call: CallbackQuery):
     if not Admins.get_or_none(id=call.from_user.id):
@@ -149,22 +127,21 @@ async def back_in_admin(call: CallbackQuery):
 async def start_wipe(message: types.Message):
     if not Admins.get_or_none(id=message.chat.id):
         return
+
     if not "view" in Admins.get(id=message.chat.id).rights:
         return await message.reply(strings["no_rights"])
+
     await confirm_wipe(message)
 
 @dp.message_handler(commands=["restart"])
 async def restart_bot(message: types.Message):
-    print((Back.BLACK + Fore.WHITE + "RESTART" + Style.RESET_ALL) + ("🪄  " + Style.RESET_ALL) + (Back.WHITE + Fore.YELLOW + (f"ON: {message.from_user.username}" if message.from_user.username else f"ID: {message.from_user.id}") + Style.RESET_ALL))
-    # Write a report back
+    if not Admins.get_or_none(id=message.from_user.id):
+        return
+
     await message.answer('<b>Перезапуск..</b>')
     # Close all active connections and close the event loop
     await dp.storage.close()
     await dp.storage.wait_closed()
-
-    # Restart the bot process without stopping the program
-    python = sys.executable
-    os.execl(python, python, *sys.argv)
 
 @dp.message_handler(commands=["pin"])
 async def pin_message(message: types.Message):
@@ -204,8 +181,6 @@ async def pin_message(message: types.Message):
     else:
         meuser = "undefined"
 
-    log_written = False
-
     # Получение текущего времени в часовом поясе Moscow
     timezone = pytz.timezone("Europe/Moscow")
     current_time = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
@@ -216,33 +191,16 @@ async def pin_message(message: types.Message):
             message_id = data["msg_id"] # type: ignore
             try:
                 await bot.pin_chat_message(user_id, message_id) # type: ignore
+                await bot.pin_chat_message(message.chat.id, message.reply_to_message.message_id)
+                await rrs.edit_text("Сообщение успешно закреплено у всех.")
 
-                if not log_written:
-                    # Запись в файл лога
-                    log_message = (f'{current_time} - #PIN | admin_id: {message.from_user.id}, @{meuser}, | text: `{text}`\n\n')
-
-                    with open(log_file, "a") as file:
-                        file.write(log_message)
-                    log_written = True
+                # Запись в файл лога
+                log(f'{current_time} - #PIN | admin_id: {message.from_user.id}, @{meuser}, | text: `{text}`\n\n')
 
             except Exception as e:
-                pass
-
-    try:
-        await bot.pin_chat_message(message.chat.id, message.reply_to_message.message_id)
-
-        if not log_written:
-            # Запись в файл лога
-            log_message = (f'{current_time} - #PIN | admin_id: {message.from_user.id}, @{meuser}, | text: `{text}`\n\n')
-
-            with open(log_file, "a") as file:
-                file.write(log_message)
-            log_written = True
-
-    except Exception as e:
-        pass
-
-    await rrs.edit_text("Сообщение успешно закреплено у всех.")
+                print(e)
+                await message.answer("Закрепить не удалось..")
+                return
 
 @dp.message_handler(commands=["unpin"])
 async def unpin_message(message: types.Message):
@@ -287,8 +245,6 @@ async def unpin_message(message: types.Message):
     else:
         meuser = None
 
-    log_written = False
-
     # Получение текущего времени в часовом поясе Moscow
     timezone = pytz.timezone("Europe/Moscow")
     current_time = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
@@ -300,22 +256,15 @@ async def unpin_message(message: types.Message):
             try:
                 await bot.unpin_chat_message(user_id, message_id) # type: ignore
 
-                if not log_written:
-                    # Запись в файл лога
-                    log_message = (f'{current_time} - #UNPIN | admin_id: {message.from_user.id}, @{meuser}, | text: `{text}`\n\n')
-
-                    with open(log_file, "a") as file:
-                        file.write(log_message)
-                    log_written = True
+                log(f'{current_time} - #UNPIN | admin_id: {message.from_user.id}, @{meuser}, | text: `{text}`\n\n')
 
             except Exception as e:
                 pass
 
     await sayguy.edit_text("Сообщение успешно откреплено у всех.")
 
-@dp.message_handler(commands=["purge", "del", "delite"])
+@dp.message_handler(commands=["purge", "del", "delete"])
 async def purge(message: Message):
-    mj = message
     args = message.get_args().split() # type: ignore
     reason = (None if not args else " ".join(args))
 
@@ -334,7 +283,6 @@ async def purge(message: Message):
 
     user_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
 
-
     if not user_id:
         return await message.reply(strings["no_msg"])
     replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
@@ -350,12 +298,12 @@ async def purge(message: Message):
 
     try:
         await bot.send_message(chat_log,
-            f"#DELETE\n<b>Админ:</b> <a href='{get_mention(mj.chat)}'>{mj.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Сообщение:</b>"
+            f"#DELETE\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Сообщение:</b>"
         )
         await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
     except: pass
 
-    await bot.edit_message_reply_markup(mj.chat.id, mj.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
+    await bot.edit_message_reply_markup(message.chat.id, message.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
 
     await asyncio.gather(*[
         bot.delete_message(data["chat_id"], data["msg_id"]) # type: ignore
@@ -380,7 +328,7 @@ async def promote(message: Message):
 
     args = message.get_args().split() # type: ignore
     if len(args) < 2:
-        return await message.reply("Нет аргументов\nПример: /promote Адмін mute\;purge") # type: ignore
+        return await message.reply("Нет аргументов\nПример: /promote Админ mute\;purge") # type: ignore
     name = args[0]
     rights = args[1]
     replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
@@ -400,8 +348,6 @@ async def promote(message: Message):
 
     ims = await bot.send_message(id, f"Тебя назначили админом: <code>{name}</code>\nДля ознакомства посмотри /help", reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, id)) # type: ignore
     await bot.pin_chat_message(ims.chat.id, ims.message_id)
-    await bot.unpin_chat_message(ims.chat.id, ims.message_id)
-
 
 @dp.message_handler(commands=["demote"])
 async def demote(message: Message):
@@ -411,8 +357,6 @@ async def demote(message: Message):
         return await message.reply(strings["no_rights"])
     if not message.reply_to_message:
         return await message.reply(strings["no_reply"])
-
-    args = message.get_args().split() # type: ignore
 
     id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
     if not id:
@@ -435,9 +379,9 @@ async def mute(message: Message):
         return await message.reply(strings["no_rights"])
     if not message.reply_to_message:
         return await message.reply(strings["no_reply"])
-    zvo = message
     replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
     sender_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
+
     if not sender_id:
         return await message.reply(strings["no_msg"])
 
@@ -475,7 +419,7 @@ async def mute(message: Message):
 
     moscow_tz = timezone('Europe/Moscow')
     unmute_time = datetime.now(moscow_tz) + timedelta(seconds=duration)
-    unmute_string = unmute_time.strftime("%d/%m/%Y %H:%M:%S")
+    unmute_string = unmute_time.strftime("%d.%m.%Y %H:%M:%S")
     duration_parts = []
 
     if years > 0:
@@ -498,24 +442,20 @@ async def mute(message: Message):
 
     ims = await bot.send_message(sender_id, f"#MUTE\nТвоё сообщение[{sender_id}] было удалено, и тебя было замучено на {duration_string}{reason_string}\nUtil unmute: {unmute_string}", reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id)) # type: ignore
 
-
     await bot.pin_chat_message(ims.chat.id, ims.message_id)
 
     await asyncio.gather(*[
         bot.delete_message(data["chat_id"], data["msg_id"]) # type: ignore
         for data in replies # type: ignore
-        if data["chat_id"] != user_id and data["chat_id"] != message.chat.id # type: ignore
+        if data["chat_id"] != sender_id and data["chat_id"] != message.chat.id # type: ignore
     ], return_exceptions=True)
-    reply_msg_id = get_reply_id(replies, sender_id)
 
     try:
-        USER = await bot.get_chat(sender_id)
         await bot.send_message(chat_log, f"#MUTE\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\n<b>Причина:</b> {'null' if not reason else reason}\n<b>Время:</b> {duration_string}")
-        await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
+        await bot.forward_message(chat_log, from_chat_id=sender_id, message_id=get_reply_id(replies, sender_id)) # type: ignore
     except: pass
 
-    await bot.edit_message_reply_markup(zvo.chat.id, zvo.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
-
+    await bot.edit_message_reply_markup(message.chat.id, message.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
 
 @dp.message_handler(commands=["warn"])
 async def warn_user(message):
@@ -543,28 +483,39 @@ async def warn_user(message):
     replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
     sender_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
     user = Users.get_or_none(id=user_id)
+
     if user:
         Users.update(warns=Users.warns+1).where(Users.id==user_id).execute()
+
         await message.reply("Сообщение было удалено, и было выдано предупреждение")
+
         keyboard = InlineKeyboardMarkup(row_width=1).add(
             InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"), # type: ignore
             InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat)) # type: ignore
         )
+
         await bot.send_message(chat_log, f"#WARN\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>" + (f"\n<b>Причина:</b> <code>{reason}</code>" if reason else "null") + "\n<b>Сообщение:</b>")
         await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
+
         if user.warns < 2:
+
             rtv = await bot.send_message(user_id, f"#WARN\nВам было выдано предупреждение (варн), и сообщение, нарушающее правила, было удалено" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id)) # type: ignore
+
             await asyncio.gather(*[
                 bot.delete_message(data["chat_id"], data["msg_id"]) # type: ignore
                 for data in replies # type: ignore
                 if data["chat_id"] != user_id and data["chat_id"] != message.chat.id # type: ignore
             ], return_exceptions=True)
+
             await bot.pin_chat_message(rtv.chat.id, rtv.message_id)
+
         if user.warns >= 2:
             Users.update(warns=0, mute=datetime.now() + timedelta(hours=7)).where(Users.id == user_id).execute()
+
             rtv = await bot.send_message(user_id, f"#WARN\nВаше сообщение удалено, а так же вы были замучены на 7 часов" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_markup=keyboard, reply_to_message_id=get_reply_id(replies, sender_id), parse_mode="HTML") # type: ignore
 
             await bot.pin_chat_message(rtv.chat.id, rtv.message_id)
+
             await asyncio.gather(*[
                 bot.delete_message(data["chat_id"], data["msg_id"]) # type: ignore
                 for data in replies # type: ignore
@@ -585,19 +536,25 @@ async def unwarn_user(message):
     user_id, reason = None, None
     
     if message.reply_to_message:
+
         user_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
+
         if not user_id:
             return await message.reply(strings["no_reply"])
+
         if message.get_args():
             reason = message.get_args()
     else:
         args = message.get_args().split()
+
         if not args:
             return await message.reply(strings["no_reply"])
+
         try:
             user_id = int(args[0])
         except ValueError:
             return await message.reply(strings["no_reply"])
+
         if len(args) > 1:
             reason = ' '.join(args[1:])
 
@@ -618,8 +575,8 @@ async def unwarn_user(message):
         else:
 
             Users.update(warns=Users.warns-1).where(Users.id==user_id).execute()
-            response_text = f"Успешно снят один варн {'с причиной: ' + reason if reason else ''}"
-            await message.reply(response_text)
+
+            await message.reply(f"Успешно снят один варн {'с причиной: ' + reason if reason else ''}")
 
             keyboard = InlineKeyboardMarkup(row_width=1).add(
                 InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"), # type: ignore
@@ -641,22 +598,25 @@ async def unwarn_user(message):
 async def unload(msg):
     if Admins.get_or_none(id=msg.from_user.id) and msg.from_user.id != ownew:
         return
+
     elif msg.from_user.id == ownew:
+
         for user in Users.select(Users.id):
             Users.update(mute=datetime.now()).where(Users.id==user.id).execute()
         await msg.reply("ok")
+
     else:
         hes = Users.get(Users.id == msg.chat.id).mute
-        Users.update(mute=hes + timedelta(minutes=45)).where(Users.id == msg.chat.id).execute()
+
+        Users.update(mute=hes + timedelta(minutes=15)).where(Users.id == msg.chat.id).execute()
+
         EQ = InlineKeyboardMarkup(row_width=1).add(
                 InlineKeyboardButton(text=f"ИНСТРУКЦИЯ КАК СНЯТЬ МУТ", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ") # type: ignore
         )
-        ims = await msg.reply("<b>Never gonna give you up</b>\n<tg-spoiler>Вы были отключены от чата на 45 минут</tg-spoiler>", reply_markup=EQ, parse_mode="HTML")
+
+        ims = await msg.reply("<b>Never gonna give you up</b>\n<tg-spoiler>Вы были отключены от чата на 15 минут</tg-spoiler>", reply_markup=EQ, parse_mode="HTML")
+
         await bot.pin_chat_message(ims.chat.id, ims.message_id)
-        try:
-            await bot.send_message(chat_log, f"#NEVER_GONNA_GIVE_YOU_UP")
-        except:
-            pass
 
 @dp.message_handler(commands=["unmute"])
 async def unmute(message: Message):
@@ -665,19 +625,20 @@ async def unmute(message: Message):
     if "mute" not in Admins.get(id=message.chat.id).rights:
         return await message.reply(strings["no_rights"])
 
-
     if message.reply_to_message:
         # Вариант с ответом на сообщение
         args = message.get_args().split() # type: ignore
         reason = " ".join(args) if args else None
         replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
         sender_id = get_reply_sender(message.chat.id, message.reply_to_message.message_id)
+
         if not sender_id:
             return await message.reply(strings["no_msg"])
 
         Users.update(mute=datetime.now()).where(Users.id == sender_id).execute()
 
         await message.reply(strings["done"])
+
         keyboard = InlineKeyboardMarkup(row_width=1).add(
             InlineKeyboardButton(text=f"#DEBUG", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"),  # type: ignore
             InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat))  # type: ignore

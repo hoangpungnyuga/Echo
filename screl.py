@@ -55,66 +55,19 @@ async def registration(call: types.CallbackQuery):
 			Users.create(id=user_id)
 		except Exception as e:
 			return await call.message.answer(str(e))
-		
+
 		await bot.answer_callback_query(call.id, "Регистрация подтверждена.🔗")
 		await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
 		await bot.send_message(
 			call.message.chat.id,
 				"<b>Отлично, вы зарегистрированы."
-				"\nТеперь вы можете писать всем юзерам Echo."
+				"\nТеперь вы можете писать всем юзерам этого бота."
 				"\n\nДля более подробных деталей о командах и прочих, вы можете воспользоваться командой /help</b>"
 		)
 
 	else:
 		await bot.answer_callback_query(call.id, "Вы уже зарегистрированы в боте.")
 		await bot.delete_message(call.message.chat.id, call.message.message_id)
-
-@dp.message_handler(commands=['info', 'version', 'v'], commands_prefix='!-/')
-@delayed_message(rate_limit=2, rate_limit_interval=5)
-async def versions(message: types.Message):
-	v = "14.1"
-
-	edit = time.ctime(os.path.getmtime('screl.py'))
-
-	photo = InputFile('image/initialD.jpg')
-
-	if platform.system() == 'Linux':
-		s = f", {platform.freedesktop_os_release().get('NAME', '')}"
-
-	elif platform.system() == 'Windows':
-		s = f", {platform.win32_ver()[0]}"
-
-	else:
-		s = ""
-
-	try:
-		await message.answer_photo(
-
-		photo=photo,
-
-		caption=(
-		"<code>🏳️‍🌈Mirai project: Echo🏳️‍⚧️</code>"
-		f"\nVersion echo: <i>{v}</i>"
-		f"\nVersion edition on: <i>{edit}</i>"
-		"\nOS platform: <i>%s{}</i>"
-		f"\nPython V: <i>{platform.python_version()}</i>"
-		f"\nAiogram V: {__version__}"
-		"\n\nProject on mirai, also minch"
-		"\nCode to t.me/untitled7bot closed."
-		"\nSup in the github on mirai. github.com/hoangpungnyuga".format(s)
-		% platform.system())
-		)
-
-	except Exception as e:
-		await message.answer(str(e))
-
-@dp.message_handler(commands=['mirai', 'minch'])
-async def dev(message: types.Message):
-	if message.text == "/mirai":
-		await message.answer("Да? Кстати это @Sunzurai")
-
-	elif message.text == "/minch":
-		await message.answer("ну, это уже @wekosay")
 
 @dp.callback_query_handler(lambda c: c.data == 'not0username!')
 @delayed_message(rate_limit=1, rate_limit_interval=15)
