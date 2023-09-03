@@ -1,7 +1,3 @@
-# ⚖️ GPL-3.0 license
-# 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
-# ⚖️ GPL-3.0 license
-# 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
 from loader import bot, dp, support
 import asyncio
 import time

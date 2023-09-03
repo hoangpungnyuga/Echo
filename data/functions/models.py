@@ -1,5 +1,3 @@
-# ⚖️ GPL-3.0 license
-# 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
 from peewee import SqliteDatabase, Model, PrimaryKeyField, BooleanField, DateTimeField, TextField, IntegerField
 from lightdb import LightDB
 from datetime import datetime, timedelta

@@ -1,8 +1,5 @@
-# ⚖️ GPL-3.0 license
-# 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
 import asyncio
 import pytz
-import sys
 from loader import bot, dp, chat_log, ownew
 from aiogram import types
 from pytz import timezone
@@ -10,14 +7,13 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 from data.functions.models import Users, Admins, get_reply_data, get_reply_sender, get_reply_id
 from data.functions import utils_mute
 from datetime import datetime, timedelta
-from colorama import Fore, Back, Style 
 from wipe import *
 
 log_file = "app.log"
 log_called = False
 
 def get_mention(user):
-    return f"t.me/{user.username}/" if user.username else f"tg://openmessage?user_id={user.id}"
+    return f"https://t.me/{user.username}/" if user.username else f"tg://openmessage?user_id={user.id}"
 
 def log(text):
     global log_called

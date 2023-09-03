@@ -1,5 +1,3 @@
-# ⚖️ GPL-3.0 license
-# 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
 import logging
 import asyncio
 from aiogram.bot import Bot

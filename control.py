@@ -1,5 +1,3 @@
-# ⚖️ GPL-3.0 license
-# 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
 from functools import wraps
 from datetime import datetime, timedelta
 from aiogram import types

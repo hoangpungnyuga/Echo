@@ -1,12 +1,9 @@
-# ⚖️ GPL-3.0 license
-# 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
 import os
 import subprocess
 from loader import bot, dp
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
-
 
 class WipeConfirmation(StatesGroup):
     CONFIRMATION = State()

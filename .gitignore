@@ -1,13 +1,12 @@
 .vscode
-__pycache__
 data/__pycache__
 data/config.ini
-data/config.ini
-data/functions/__pycache__
 handlers/__pycache__
 logs.log
-backup
+app.log
 data/db.sql
 data/replies.json
 data/config.ini
-app.log
+__pycache__/*
+data/functions/__pycache__/*
+handlers/__pycache__/*

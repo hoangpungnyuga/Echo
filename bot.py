@@ -1,5 +1,3 @@
-# ⚖️ GPL-3.0 license
-# 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
 import argparse
 import pytz
 import time
@@ -8,7 +6,6 @@ from aiogram.utils import executor
 from datetime import datetime
 from colorama import init, Fore, Back, Style 
 from data.functions.models import Admins
-
 
 class Notification():
     def __init__(self):
@@ -68,6 +65,6 @@ if __name__ == "__main__":
         init()
         print(Back.WHITE + Fore.BLUE + "/load" + Style.RESET_ALL)
 
-        strike = Notification()
-        executor.start_polling(dp, on_startup=strike.on, on_shutdown=strike.off, skip_updates=False)
+        notif = Notification()
+        executor.start_polling(dp, on_startup=notif.on, on_shutdown=notif.off, skip_updates=False)
 

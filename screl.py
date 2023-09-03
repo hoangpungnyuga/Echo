@@ -1,8 +1,3 @@
-# ⚖️ GPL-3.0 license
-# 🏳️‍⚧️ Project on Mirai :<https://github.com/hoangpungnyuga/>
-import os
-import time
-import platform
 from aiogram import types, __version__
 from data.functions.models import Users
 from aiogram.types import CallbackQuery, InputFile
