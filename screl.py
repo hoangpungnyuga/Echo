@@ -1,7 +1,10 @@
-from aiogram import types, __version__
+import asyncio
+from aiogram import types
 from data.functions.models import Users
-from aiogram.types import CallbackQuery, InputFile
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, InputFile
+from aiogram.dispatcher import FSMContext
 from loader import dp, bot, chat_log
+from data.functions.models import get_reply_data, get_reply_sender
 from control import delayed_message
 
 @dp.message_handler(lambda message: message.chat.type != types.ChatType.PRIVATE and str(message.chat.id) != str(chat_log))
@@ -71,3 +74,37 @@ async def not_username(callback_query: types.CallbackQuery):
     debug = types.InlineKeyboardMarkup().add(types.InlineKeyboardButton(text="#DEBUG", url="http://news.rr.nihalnavath.com/posts/--28613ab8")) # type: ignore
     commit = '<i>У этого пользователя username отсутствует.</i>'
     await bot.send_animation(callback_query.from_user.id, gif_url, caption=commit, reply_markup=debug, has_spoiler=True)
+
+@dp.callback_query_handler(lambda query: query.data.startswith("delete_msg="))
+async def delete_msg_callback(query: CallbackQuery, state: FSMContext):
+    # Получаем необходимые данные из callback-данных
+    message_id = int(query.data.split('=')[1])
+    replies = get_reply_data(query.from_user.id, message_id)
+    sender_id = get_reply_sender(query.from_user.id, message_id)
+
+    notificate = await query.message.answer(
+        "Удаляю это сообщение..",
+        reply=True
+    )
+
+    async def delete_messages():
+        try:
+            await asyncio.gather(*[
+                bot.delete_message(data["chat_id"], data["msg_id"]) # type: ignore
+                for data in replies # type: ignore
+                if data["chat_id"] != sender_id and data["chat_id"] != query.from_user.id # type: ignore
+            ], return_exceptions=True)
+        except Exception as e:
+            await notificate.edit_text(f"Удалить у всех не получилось. По причине: {e}")
+
+    # Запуск асинхронной задачи в фоне
+    asyncio.create_task(delete_messages())
+
+    await bot.edit_message_reply_markup(notificate.chat.id, notificate.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
+
+    try:
+        await notificate.edit_text("🗑️ Удалено")
+        await asyncio.sleep(5)
+        await bot.delete_message(notificate.chat.id, notificate.message_id)
+    except Exception as e:
+        await bot.send_message(query.from_user.id, f"Возникла ошибка при удалении: {e}")

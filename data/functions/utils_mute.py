@@ -1,9 +1,8 @@
 import re
 import datetime
 
-WORDS = 'двгчмсdwyhms'
-PATTERN = re.compile(fr"(?P<value>\d+)(?P<modifier>[{WORDS}])")
-LINE_PATTERN = re.compile(fr"^(\d+[{WORDS}]){1,}$")
+PATTERN = re.compile(r"(?P<value>\d+)(?P<modifier>['двгчмсdwyhms'])")
+LINE_PATTERN = re.compile(r"^(\d+['двгчмсdwyhms']){1,}$")
 
 MODIFIERS = {
 	"д": datetime.timedelta(days=1),

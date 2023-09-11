@@ -285,7 +285,8 @@ async def purge(message: Message):
     if not replies:
         return await message.reply(strings["no_msg"])
 
-    message = await message.reply(strings["purging"])
+    status = await message.answer(strings["purging"])
+
     reply_msg_id = get_reply_id(replies, user_id)
     keyboard = InlineKeyboardMarkup(row_width=1).add(
         InlineKeyboardButton(text=f"RULES", url="https://telegra.ph/Rules-Echo-to-Kim-04-30"), # type: ignore
@@ -299,19 +300,19 @@ async def purge(message: Message):
         await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
     except: pass
 
-    await bot.edit_message_reply_markup(message.chat.id, message.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
-
     await asyncio.gather(*[
         bot.delete_message(data["chat_id"], data["msg_id"]) # type: ignore
         for data in replies
         if data["chat_id"] != user_id and data["chat_id"] != message.chat.id # type: ignore
     ], return_exceptions=True)
 
-    await message.edit_text(strings["purged"])
+    await status.edit_text(strings["purged"])
 
     ims = await bot.send_message(user_id, f"Ваше сообщение было удалено" + (f" по причине: '<code>{reason}</code>'" if reason else ""), reply_to_message_id=reply_msg_id, reply_markup=keyboard) # type: ignore
 
     await bot.pin_chat_message(ims.chat.id, ims.message_id)
+
+    await bot.edit_message_reply_markup(ims.chat.id, ims.reply_to_message.message_id, reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("DELETED", callback_data="s"))) # type: ignore
 
 @dp.message_handler(commands=["promote"])
 async def promote(message: Message):

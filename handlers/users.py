@@ -7,7 +7,7 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, I
 from data.functions.models import Users, Admins, rdb, get_reply_id32, get_reply_data, is_flood
 from aiogram.types.message_id import MessageId
 from control import delayed_message, registered_only
-from screl import check_floodwait, not_username
+from screl import check_floodwait, not_username, delete_msg_callback
 from datetime import datetime, timedelta
 
 log_file = "app.log"
@@ -91,8 +91,8 @@ async def help(message: Message):
             WB += '/pin &lt;reply&gt; - <i>Закрепить сообщение</i> <b>【ban】</b>\n'
             WB += '/unpin &lt;reply&gt; - <i>Открепить сообщение</i> <b>【ban】</b>\n'
             WB += '/del &lt;reply&gt; - <i>Удалить сообщение</i> <b>【purge】</b>\n'
-            WB += '/mute &lt;reply&gt; &lt;Xs;m;h;d;y&gt; [reason] - <i>Замутить пользователя</i> <b>【mute】</b>\n'
-            WB += 'ㅤㅤ X - <i>время</i>\nㅤㅤ s - <i>секунды</i>\nㅤㅤ m - <i>минуты</i>\nㅤㅤ h - <i>часы</i>\nㅤㅤ d - <i>дни</i>\nㅤㅤ y - <i>года</i>\n'
+            WB += '/mute &lt;reply&gt; &lt;Xs;m;h;d;w;y&gt; [reason] - <i>Замутить пользователя</i> <b>【mute】</b>\n'
+            WB += 'ㅤㅤ X - <i>время</i>\nㅤㅤ s - <i>секунды</i>\nㅤㅤ m - <i>минуты</i>\nㅤㅤ h - <i>часы</i>\nㅤㅤ d - <i>дни</i>\nㅤㅤ w - <i>недели</i>\nㅤㅤ y - <i>года</i>\n'
             WB += '/unmute &lt;id|reply&gt; [reason] - <i>Размутить пользователя</i> <b>【mute】</b>\n'
             WB += '/warn &lt;reply&gt; [reason] - <i>Дать один WARN пользователю</i> <b>【warn】</b>\n'
             WB += '/unwarn &lt;id|reply&gt; [reason] - <i>Снять один WARN пользователю</i> <b>【warn】</b>\n'
@@ -216,11 +216,12 @@ def remove_dogs(user_id, e):
 async def send(message, *args, **kwargs):
     return (await message.copy_to(*args, **kwargs)), args[0]
 
-async def Send(message, keyboard, reply_data):
-    result = [{"sender_id": message.chat.id}]
+async def Send(message, keyboard, keyboard_del_my_msg, reply_data):
+    result = [{"sender_id": message.from_user.id}]
     tasks = {}
+
     for user in Users.select(Users.id):
-        if user.id != message.chat.id or (user.id == message.from_user.id and user.id != 5885645595):
+        if user.id != message.from_user.id:
             task = asyncio.create_task(
                 send(
                     message,
@@ -230,6 +231,18 @@ async def Send(message, keyboard, reply_data):
                 )
             )
             tasks[task] = user.id
+
+        if user.id == message.from_user.id:
+            task = asyncio.create_task(
+                send(
+                    message,
+                    message.from_user.id,
+                    reply_markup=keyboard_del_my_msg,
+                    reply_to_message_id=get_reply_id32(reply_data, user.id) if message.reply_to_message else None
+                )
+            )
+            tasks[task] = user.id
+
     for task in tasks:
         try:
             msg_obj = await task
@@ -256,6 +269,7 @@ async def Send(message, keyboard, reply_data):
     msgs_db = rdb.get("messages", [])
     msgs_db.append(result) # type: ignore
     rdb.set("messages", msgs_db)
+
 
 @dp.message_handler(content_types="any")
 @registered_only
@@ -351,6 +365,29 @@ async def any(message: Message):
     else:
         keyboard = None
 
+    keyboard_del_my_msg = None
+
+    if message.from_user.id:
+        text = "DELETE THIS MESSAGE"
+        if Users.get(Users.id==user_id).tag:
+            name = message.from_user.full_name
+            username_or_rickroll = f"https://t.me/{message.from_user.username}/" if message.from_user.username else "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+            also = f"https://t.me/{message.from_user.username}/" if message.from_user.username else "not0username!"
+            keyboard_del_my_msg = InlineKeyboardMarkup().add(
+            InlineKeyboardButton(text=name, url=also if also.startswith("https") else None, callback_data=also if not also.startswith("https") else None) # type: ignore
+            )
+            if Admins.get_or_none(id=user_id):
+                keyboard_del_my_msg.add(
+                InlineKeyboardButton("ADMIN", username_or_rickroll) # type: ignore
+                )
+            keyboard_del_my_msg.add(
+                    InlineKeyboardButton(text , callback_data=f"delete_msg={message.message_id}") # type: ignore
+                )
+        else:
+            keyboard_del_my_msg = InlineKeyboardMarkup().add(
+                InlineKeyboardButton(text , callback_data=f"delete_msg={message.message_id}") # type: ignore
+            )
+
     if message.reply_to_message:
         reply_data = get_reply_data(message.chat.id, message.reply_to_message.message_id)
     else:
@@ -371,7 +408,7 @@ async def any(message: Message):
     users = Users.select()
     hey = await message.reply("Send..")
     start_time = time.monotonic()
-    await Send(message, keyboard, reply_data)
+    await Send(message, keyboard, keyboard_del_my_msg, reply_data)
     end_time = time.monotonic()
     send_duration = end_time - start_time
 
