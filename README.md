@@ -8,7 +8,7 @@ git clone https://github.com/hoangpungnyuga/Echo
 cd Echo
 pip install -r requirements.txt
 ```
-## После измените название файла example.config.ini на **config.ini**
+## После измените название файла в папке **data/** example.config.ini на **config.ini**
 Это можно сделать так:
 ```shell
 mv example.config.ini config.ini
