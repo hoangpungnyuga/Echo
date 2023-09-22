@@ -20,3 +20,10 @@ mv example.config.ini config.ini
 ```shell
 python3 bot.py
 ```
+
+~~ По поводу того как сделать себя админом, вы можете вручную себя добавить в датабазе data/ db.sql
+~~ Для этого откройте файл датабазы любой программой, к примеру (SQLiteStudio)[https://sqlitestudio.pl/]
+~~ И добавьте свой ID в таблицу admins в rights ( mute\;purge\;warn\;view\;promote\;ban )
+# После рестарт.
+
+## Команды есть в /help
