@@ -15,3 +15,8 @@ mv example.config.ini config.ini
 ```
 
 ### После измените **config.ini** на свои значения.
+
+## Чтобы после запустить бота выполните в терминале -
+```shell
+python3 bot.py
+```
