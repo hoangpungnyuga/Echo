@@ -400,8 +400,8 @@ async def any(message: Message):
 
     if is_flood(message.chat.id):
         Users.update(mute=datetime.now() + timedelta(minutes=3)).where(Users.id==message.chat.id).execute()
-        minchgod = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"#FLOOD", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
-        ims = await message.reply("Это флуд.\nВы были отключены от чата на 3 минуты", reply_markup=minchgod)
+        keyFlood = InlineKeyboardMarkup().add(InlineKeyboardButton(text=f"#FLOOD", url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")) # type: ignore
+        ims = await message.reply("Это флуд.\nВы были отключены от чата на 3 минуты", reply_markup=keyFlood)
         await bot.pin_chat_message(ims.chat.id, ims.message_id)
         return
 
@@ -421,6 +421,6 @@ async def any(message: Message):
         send_duration_sec = int(send_duration % 60)
         send_duration_str = f"{send_duration_min} минут {send_duration_sec} секунд"
 
-    await hey.edit_text(f"Твоё сообщение было отправлено {len(users)} пользователям бота за <b>{send_duration_str}</b>", parse_mode="HTML")
+    await hey.edit_text(f"Твоё сообщение было отправлено {len(users)} пользователям бота за <b>{send_duration_str}</b>")
 
     Users.update(mute=datetime.now()).where(Users.id==user_id).execute()
