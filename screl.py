@@ -76,8 +76,7 @@ async def not_username(callback_query: types.CallbackQuery):
     await bot.send_animation(callback_query.from_user.id, gif_url, caption=commit, reply_markup=debug, has_spoiler=True)
 
 @dp.callback_query_handler(lambda query: query.data.startswith("delete_msg="))
-async def delete_msg_callback(query: CallbackQuery, state: FSMContext):
-    # Получаем необходимые данные из callback-данных
+async def delete_msg_callback(query: CallbackQuery):
     message_id = int(query.data.split('=')[1])
     replies = get_reply_data(query.from_user.id, message_id)
     sender_id = get_reply_sender(query.from_user.id, message_id)
