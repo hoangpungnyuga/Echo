@@ -23,7 +23,7 @@ python3 bot.py
 
 ~~ По поводу того как сделать себя админом, вы можете вручную себя добавить в датабазе data/ db.sql (файл будет создан после запуска, или создайте сами. touch data/db.sql)<br>
 ~~ Для этого откройте файл датабазы любой программой, к примеру SQLiteStudio<br>
-~~ И добавьте свой ID в таблицу admins, в rights ( mute\;purge\;warn\;view\;promote\;ban )<br>
+~~ И добавьте свой ID в таблицу admins, в name (имя текст кнопки, к примеру ADMIN), rights ( mute\;purge\;warn\;view\;promote\;ban )<br>
 После рестарт.
 
 ## Команды есть в /help
