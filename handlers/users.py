@@ -120,6 +120,8 @@ async def help(message: Message):
 async def profile(message: Message):
     user = Users.get_or_none(Users.id == message.chat.id)
 
+    admin = Admins.get_or_none(id=message.chat.id)
+
     users = Users.select()
 
     last_msg = message.message_id
@@ -133,7 +135,7 @@ async def profile(message: Message):
     if dur.startswith("-"):
         dur = "undefined"
 
-    if Admins.get_or_none(id=message.chat.id):
+    if admin:
         is_admin = "Yeah."
 
     else:
@@ -150,6 +152,15 @@ async def profile(message: Message):
 
     msgs_your = sum(1 for msg in msgs_db if msg[0].get("sender_id") == message.from_user.id) # type: ignore
 
+    adminTagBoolean = None
+
+    if admin and admin.tag:
+        adminTagBoolean = 'Yes'
+    elif not admin.tag:
+        adminTagBoolean = 'No'
+    else:
+        adminTagBoolean = 'You not admin.'
+
     user_date = "nothing."
     for msg in reversed(msgs_db):
         sender_id = msg[0].get("sender_id") # type: ignore
@@ -165,6 +176,7 @@ async def profile(message: Message):
                        f"Mute: {dur}\n"
                        f"Warns: {user.warns}\n"
                        f"You admin?: {is_admin}\n"
+                       f"tagAdmin?: {adminTagBoolean}\n"
                        f"Use_tag: {user.tag}\n"
                        f"Msg Sent You: {msgs_your}\n"
                        f"Users: {len(users)}\n"
