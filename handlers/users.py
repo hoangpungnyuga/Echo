@@ -353,14 +353,15 @@ async def any(message: Message):
 
     if Users.get(Users.id==user_id).tag:
         name = message.from_user.full_name
+        admin = Admins.get_or_none(id=user_id)
         username_or_rickroll = f"https://t.me/{message.from_user.username}/" if message.from_user.username else "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         also = f"https://t.me/{message.from_user.username}/" if message.from_user.username else "not0username!"
         keyboard = InlineKeyboardMarkup().add(
         InlineKeyboardButton(text=name, url=also if also.startswith("https") else None, callback_data=also if not also.startswith("https") else None) # type: ignore
         )
-        if Admins.get_or_none(id=user_id):
+        if admin and admin.tag:
             keyboard.add(
-            InlineKeyboardButton("ADMIN", username_or_rickroll) # type: ignore
+                InlineKeyboardButton(admin.name, username_or_rickroll) # type: ignore
             )
     else:
         keyboard = None
@@ -370,15 +371,16 @@ async def any(message: Message):
     if message.from_user.id:
         text = "DELETE THIS MESSAGE"
         if Users.get(Users.id==user_id).tag:
-            name = message.from_user.full_name
+            nameFull = message.from_user.full_name
+            admin = Admins.get_or_none(id=user_id)
             username_or_rickroll = f"https://t.me/{message.from_user.username}/" if message.from_user.username else "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
             also = f"https://t.me/{message.from_user.username}/" if message.from_user.username else "not0username!"
             keyboard_del_my_msg = InlineKeyboardMarkup().add(
-            InlineKeyboardButton(text=name, url=also if also.startswith("https") else None, callback_data=also if not also.startswith("https") else None) # type: ignore
+            InlineKeyboardButton(text=nameFull, url=also if also.startswith("https") else None, callback_data=also if not also.startswith("https") else None) # type: ignore
             )
-            if Admins.get_or_none(id=user_id):
+            if admin and admin.tag:
                 keyboard_del_my_msg.add(
-                InlineKeyboardButton("ADMIN", username_or_rickroll) # type: ignore
+                    InlineKeyboardButton(admin.name, username_or_rickroll) # type: ignore
                 )
             keyboard_del_my_msg.add(
                     InlineKeyboardButton(text , callback_data=f"delete_msg={message.message_id}") # type: ignore

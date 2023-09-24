@@ -22,8 +22,9 @@ class Users(BaseModel):
 
 class Admins(BaseModel):
 	id = PrimaryKeyField()
-	name = TextField(default="Модератор")
+	name = TextField(default="ADMIN")
 	rights = TextField(default="mute;warn")
+	tag = BooleanField(default=True)
 
 with db:
 	db.create_tables([Users, Admins])

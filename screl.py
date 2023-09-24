@@ -74,6 +74,7 @@ async def not_username(callback_query: types.CallbackQuery):
     debug = types.InlineKeyboardMarkup().add(types.InlineKeyboardButton(text="#DEBUG", url="http://news.rr.nihalnavath.com/posts/--28613ab8")) # type: ignore
     commit = '<i>У этого пользователя username отсутствует.</i>'
     await bot.send_animation(callback_query.from_user.id, gif_url, caption=commit, reply_markup=debug, has_spoiler=True)
+    # Если же вы получаете ошибку `unexpected keyword argument 'has_spoiler'`, то у вас старая версия Aiogram.
 
 @dp.callback_query_handler(lambda query: query.data.startswith("delete_msg="))
 async def delete_msg_callback(query: CallbackQuery):

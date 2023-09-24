@@ -682,3 +682,25 @@ async def unmute(message: Message):
             parse_mode="HTML"
         )
         await bot.pin_chat_message(why.chat.id, why.message_id)
+
+@dp.message_handler(commands=['tagAdm'])
+async def tagAdm(message: Message):
+    if not Admins.get_or_none(id=message.from_user.id):
+        return
+
+    admin = Admins.get_or_none(id=message.from_user.id)
+
+    try:
+        if admin.tag:
+            admin.tag = False
+        else:
+            admin.tag = True
+
+        admin.save()
+
+        statusTag = 'Включен' if admin.tag else 'Выключен'
+
+        await message.answer('Готово, теперь твой тег %s' % statusTag)
+    except Exception as e:
+        print(e)
+        await message.answer('Возникла ошибка..\nE: %s' % e)
