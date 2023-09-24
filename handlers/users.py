@@ -86,6 +86,8 @@ async def help(message: Message):
             right = Admins.get(id=message.from_user.id).rights
             WB += '\n\n<b>Команды для <u>админов</u>:</b>\n'
             WB += '/admin - <i>Узнать какие есть права к командам</i>\n'
+            WB += '/promote - <i>Продвинуть пользователя в админы</i>【promote】\n'
+            WB += '/demote - <i>Снять пользователя с админов</i>【promote】\n'
             WB += '/wipe - <i>Удалить файл сообщений в DB бота</i> <b>【view】</b>\n'
             WB += '/restart - <i>Рестарт бота</i> <b>【ban】</b>\n'
             WB += '/pin &lt;reply&gt; - <i>Закрепить сообщение</i> <b>【ban】</b>\n'
