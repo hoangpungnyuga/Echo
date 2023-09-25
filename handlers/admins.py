@@ -458,8 +458,8 @@ async def mute(message: Message):
 async def warn_user(message):
     if not Admins.get_or_none(id=message.chat.id):
         return
-    if not "warn" in Admins.get(id=message.chat.id).rights:
-        return await message.reply(strings["no_rights"])
+    # if not "warn" in Admins.get(id=message.chat.id).rights:
+        # return await message.reply(strings["no_rights"])
 
     user_id, reason, rtv = None, None, None
 
@@ -491,7 +491,7 @@ async def warn_user(message):
             InlineKeyboardButton(text=f"ADMIN", url=get_mention(message.chat)) # type: ignore
         )
 
-        await bot.send_message(chat_log, f"#WARN\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>" + (f"\n<b>Причина:</b> <code>{reason}</code>" if reason else "null") + "\n<b>Сообщение:</b>")
+        await bot.send_message(chat_log, f"#WARN\n<b>Админ:</b> <a href='{get_mention(message.chat)}'>{message.chat.full_name}</a>\n<b>Причина:</b> " + (f"<code>{reason}</code>" if reason else "null") + "\n<b>Сообщение:</b>")
         await bot.forward_message(chat_log, from_chat_id=user_id, message_id=get_reply_id(replies, user_id)) # type: ignore
 
         if user.warns < 2:
