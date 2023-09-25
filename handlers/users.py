@@ -118,7 +118,6 @@ async def help(message: Message):
 
 @dp.message_handler(commands=["profile"])
 @delayed_message(rate_limit=2, rate_limit_interval=5)
-
 async def profile(message: Message):
     user = Users.get_or_none(Users.id == message.chat.id)
 
