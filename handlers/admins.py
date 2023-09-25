@@ -458,8 +458,8 @@ async def mute(message: Message):
 async def warn_user(message):
     if not Admins.get_or_none(id=message.chat.id):
         return
-    # if not "warn" in Admins.get(id=message.chat.id).rights:
-        # return await message.reply(strings["no_rights"])
+    if not "warn" in Admins.get(id=message.chat.id).rights:
+        return await message.reply(strings["no_rights"])
 
     user_id, reason, rtv = None, None, None
 
