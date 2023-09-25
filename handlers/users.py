@@ -157,7 +157,7 @@ async def profile(message: Message):
 
     if admin and admin.tag:
         adminTagBoolean = 'Yes'
-    elif not admin and admin.tag:
+    elif admin and not admin.tag:
         adminTagBoolean = 'No'
     else:
         adminTagBoolean = 'You not admin.'
