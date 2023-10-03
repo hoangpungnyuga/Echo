@@ -11,23 +11,22 @@ class Notification():
     def __init__(self):
         self.admins = Admins.select(Admins.id)
         self.date = datetime.now(pytz.timezone('Europe/Moscow')).date()
+        self.time = time.strftime('%H:%M', time.localtime())
 
     async def on(self, a):
 
         for admin in self.admins:
             try:
-                current_time = time.strftime('%H:%M', time.localtime())
                 me = await bot.get_me()
-                await bot.send_message(admin, f"{self.date.strftime('%d.%m')} {current_time}: <i>{me.first_name}</i> is startup now,")
+                await bot.send_message(admin, f"{self.date.strftime('%d.%m')} {self.time}: <i>{me.first_name}</i> is startup now,")
             except:
                 pass
     
     async def off(self, a):
         for admin in self.admins:
             try:
-                current_time = time.strftime('%H:%M', time.localtime())
                 me = await bot.get_me()
-                await bot.send_message(admin, f"{self.date.strftime('%d.%m')} {current_time}: <i>{me.first_name}</i> is shutdown now.")
+                await bot.send_message(admin, f"{self.date.strftime('%d.%m')} {self.time}: <i>{me.first_name}</i> is shutdown now.")
             except:
                 pass
 
