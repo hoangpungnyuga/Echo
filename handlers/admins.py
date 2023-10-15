@@ -1,3 +1,5 @@
+import os, sys
+import json
 import asyncio
 import pytz
 from loader import bot, dp, chat_log, ownew
@@ -134,10 +136,24 @@ async def restart_bot(message: types.Message):
     if not Admins.get_or_none(id=message.from_user.id):
         return
 
+    with open('restart.json', 'r') as f:
+        data = json.load(f)
+
+    restart_time = datetime.min
+    if data['time'] != None:
+        restart_time = datetime.fromisoformat(data['time'])
+
+    if restart_time > datetime.now():
+        return
+
     await message.answer('<b>Перезапуск..</b>')
     # Close all active connections and close the event loop
-    await dp.storage.close()
-    await dp.storage.wait_closed()
+    restart_time = datetime.now() + timedelta(seconds=5) # Cooldown 5 sec.
+
+    with open('restart.json', 'w') as f:
+        json.dump({'time': restart_time.isoformat()}, f)
+
+    os.execl(sys.executable, sys.executable, *sys.argv)
 
 @dp.message_handler(commands=["pin"])
 async def pin_message(message: types.Message):
@@ -169,6 +185,7 @@ async def pin_message(message: types.Message):
     rrs = await message.answer(f"Жди, это займёт примерно <i>{wait}</i>.")
 
     replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
+    sender_id = get_reply_sender(message.from_user.id, message.reply_to_message.message_id)
 
     text = message.reply_to_message.text or message.reply_to_message.caption or 'undefined'
 
@@ -180,39 +197,38 @@ async def pin_message(message: types.Message):
     # Получение текущего времени в часовом поясе Moscow
     timezone = pytz.timezone("Europe/Moscow")
     current_time = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
+    usersPinned = 1
 
-    for data in replies: # type: ignore
-        if data["chat_id"] and data["chat_id"] != message.chat.id: # type: ignore
-            user_id = data["chat_id"] # type: ignore
-            message_id = data["msg_id"] # type: ignore
-            try:
-                await bot.pin_chat_message(user_id, message_id) # type: ignore
-                await bot.pin_chat_message(message.chat.id, message.reply_to_message.message_id)
-                await rrs.edit_text("Сообщение успешно закреплено у всех.")
+    async def pin_message(data):
+        nonlocal usersPinned
+        usersPinned += 1
+        await bot.pin_chat_message(data["chat_id"], data["msg_id"])
+    
 
-                # Запись в файл лога
-                log(f'{current_time} - #PIN | admin_id: {message.from_user.id}, @{meuser}, | text: `{text}`\n\n')
-
-            except Exception as e:
-                print(e)
-                await message.answer("Закрепить не удалось..")
-                return
+    try:
+        await asyncio.gather(*[
+            pin_message(data)
+            for data in replies # type: ignore
+            if data["chat_id"] != sender_id and data["chat_id"] != message.from_user.id # type: ignore
+        ], return_exceptions=True)
+        await bot.pin_chat_message(message.chat.id, message.reply_to_message.message_id)
+        
+        await rrs.edit_text("Данное сообщение было закреплено для %s пользователей" % usersPinned)
+        # Запись в файл лога
+        log(f'{current_time} - #PIN | admin_id: {message.from_user.id}, @{meuser}, | text: `{text}`\n\n')
+    except Exception as e:
+        print(e)
+        await rrs.edit_text("Закрепить не удалось..")
+        return
 
 @dp.message_handler(commands=["unpin"])
 async def unpin_message(message: types.Message):
-    if not Admins.get_or_none(id=message.from_user.id):
+    if not Admins.get_or_none(id=message.chat.id):
         return
-
-    if not "ban" in Admins.get(id=message.from_user.id).rights:
+    if not "ban" in Admins.get(id=message.chat.id).rights:
         return await message.reply(strings["no_rights"])
-
     if not message.reply_to_message:
         return await message.reply(strings["no_reply"])
-
-    if not get_reply_data(message.chat.id, message.reply_to_message.message_id):
-        return await message.reply(strings["no_msg"])
-
-    replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
 
     wait = 1
     if len(Users.select()) < 10:
@@ -232,32 +248,43 @@ async def unpin_message(message: types.Message):
 
     wait = f'~{wait}s'
 
-    sayguy = await message.answer(f"Жди, это займёт примерно <i>{wait}</i>.")
+    rrs = await message.answer(f"Жди, это займёт примерно <i>{wait}</i>.")
+
+    replies = get_reply_data(message.chat.id, message.reply_to_message.message_id)
+    sender_id = get_reply_sender(message.from_user.id, message.reply_to_message.message_id)
 
     text = message.reply_to_message.text or message.reply_to_message.caption or 'undefined'
 
     if message.from_user.username:
         meuser = message.from_user.username
     else:
-        meuser = None
+        meuser = "undefined"
 
     # Получение текущего времени в часовом поясе Moscow
     timezone = pytz.timezone("Europe/Moscow")
     current_time = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
+    usersUnPinned = 1
 
-    for data in replies: # type: ignore
-        if data["chat_id"]: # type: ignore
-            user_id = data["chat_id"] # type: ignore
-            message_id = data["msg_id"] # type: ignore
-            try:
-                await bot.unpin_chat_message(user_id, message_id) # type: ignore
-
-                log(f'{current_time} - #UNPIN | admin_id: {message.from_user.id}, @{meuser}, | text: `{text}`\n\n')
-
-            except Exception as e:
-                pass
-
-    await sayguy.edit_text("Сообщение успешно откреплено у всех.")
+    async def unpin_message(data):
+        nonlocal usersUnPinned
+        usersUnPinned += 1
+        await bot.unpin_chat_message(data["chat_id"], data["msg_id"])
+    
+    try:
+        await asyncio.gather(*[
+            unpin_message(data)
+            for data in replies # type: ignore
+            if data["chat_id"] != sender_id and data["chat_id"] != message.from_user.id # type: ignore
+        ], return_exceptions=True)
+        await bot.unpin_chat_message(message.chat.id, message.reply_to_message.message_id)
+        
+        await rrs.edit_text("Данное сообщение было откреплено для %s пользователей" % usersUnPinned)
+        # Запись в файл лога
+        log(f'{current_time} - #UNPIN | admin_id: {message.from_user.id}, @{meuser}, | text: `{text}`\n\n')
+    except Exception as e:
+        print(e)
+        await rrs.edit_text("Открепить не удалось..")
+        return
 
 @dp.message_handler(commands=["purge", "del", "delete"])
 async def purge(message: Message):

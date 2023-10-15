@@ -2,7 +2,7 @@ from functools import wraps
 from datetime import datetime, timedelta
 from aiogram import types
 from data.functions.models import Users
-from loader import chat_log
+from loader import chat_log, bot
 
 def delayed_message(rate_limit: int, rate_limit_interval: int):
     def decorator(func):
@@ -34,6 +34,10 @@ def registered_only(func):
             return
 
         if not Users.select().where(Users.id == user_id).exists():
+            if message.from_user.id == (await bot.get_me()).id:
+                # Fix
+                return
+
             USER = f'<a href="https://t.me/{message.from_user.username}/">You</a>' if message.from_user.username else 'You'
             await message.answer(
                 f"{USER} are not registered in the bot."

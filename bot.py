@@ -18,7 +18,7 @@ class Notification():
         for admin in self.admins:
             try:
                 me = await bot.get_me()
-                await bot.send_message(admin, f"{self.date.strftime('%d.%m')} {self.time}: <i>{me.first_name}</i> is startup now,")
+                await bot.send_message(admin, f"{self.date.strftime('%d.%m')} {self.time}: <i>{me.first_name}</i> is startup now.")
             except:
                 pass
     

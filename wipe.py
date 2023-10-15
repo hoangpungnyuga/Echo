@@ -1,4 +1,4 @@
-import os
+import os, sys
 import subprocess
 from loader import bot, dp
 from aiogram import types
@@ -18,23 +18,18 @@ def delete_file(file_path):
 
 
 async def create_file(file_path):
-    data = {
-        "messages": [
-            
-        ]
-    }
     with open(file_path, 'w') as file:
         file.write("{\n    \"messages\": [\n    ]\n}")
 
 
 async def confirm_wipe(message: types.Message):
     keyboard = types.InlineKeyboardMarkup()
-    confirm_button = types.InlineKeyboardButton('Да', callback_data='confirm')
-    cancel_button = types.InlineKeyboardButton('Нет', callback_data='cancel')
+    confirm_button = types.InlineKeyboardButton(text='Да', callback_data='confirm')
+    cancel_button = types.InlineKeyboardButton(text='Нет', callback_data='cancel')
     keyboard.add(confirm_button, cancel_button)
 
     await WipeConfirmation.CONFIRMATION.set()
-    await message.reply("Вы уверены, что хотите выполнить операцию wipe?\n<b>!!! Для применения wipe, вам нужно будет после перезапустить бота /restart !!!</b>", reply_markup=keyboard)
+    await message.reply("Вы уверены, что хотите выполнить операцию wipe?\n<b>!!! После будет рестарт бота. !!!</b>", reply_markup=keyboard)
 
 
 @dp.callback_query_handler(state=WipeConfirmation.CONFIRMATION)
@@ -48,6 +43,7 @@ async def wipe(call: types.CallbackQuery, state: FSMContext, message: types.Mess
             await create_file(file_path) # Создаем файл
             await wipe_success(call)
             await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id) # Удаляем сообщение
+            os.execl(sys.executable, sys.executable, *sys.argv)
         except FileNotFoundError:
             await wipe_error(call)
             print("File not found.") # Если файла нет, то пишем в терминал
