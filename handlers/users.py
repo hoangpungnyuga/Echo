@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 log_file = "app.log"
 
 upstart = datetime.now()
+admin_mode = False
 
 def format_timedelta(td):
     days = td.days
@@ -212,6 +213,57 @@ async def toggle_tagging(message: Message):
         Users.create(id=message.from_user.id, tag=True)
         await message.reply("Ваши следующие сообщения будут помечены вашим ником и @username\nВы были зарегистрированы в боте.", parse_mode="HTML")
 
+@dp.message_handler(commands=["protect"])
+@delayed_message(rate_limit=4, rate_limit_interval=3)
+async def toggle_protect(message: Message):
+    user = Users.get_or_none(Users.id == message.from_user.id)
+
+    if not user:
+        return
+
+    try:
+        if user.protect:
+            Users.update(protect=False).where(Users.id == message.from_user.id).execute()
+            await message.reply("Теперь пользователи <b>смогут</b> - (копировать\\пересылать\\сохранять) твои сообщения.")
+        else:
+            Users.update(protect=True).where(Users.id == message.from_user.id).execute()
+            await message.reply("Теперь пользователи <b>не смогут</b> - (копировать\\пересылать\\сохранять) твои сообщения.")
+    except Exception as e:
+        print(e)
+        return await message.reply(f"Oops.. возникла ошибка!\n> {e}")
+
+@dp.message_handler(commands=['admin_mode', 'adminMode'])
+@delayed_message(rate_limit=4, rate_limit_interval=3)
+async def toggle_admin_mode(message: Message):
+    user = Users.get_or_none(Users.id == message.from_user.id)
+    admin = Admins.get_or_none(Admins.id ==  message.from_user.id)
+
+    global admin_mode
+
+    if not user:
+        return
+    if not admin:
+        return
+
+    try:
+        if not admin_mode:
+            admin_mode = True
+            await message.reply("Ok. Теперь писать могут лишь админы.")
+        else:
+            admin_mode = False
+            await message.reply("Ok. Теперь писать могут все. Не только админы.")
+    except Exception as e:
+        print(e)
+        return await message.reply(f"ERR: {e}")
+
+def protect(message: Message):
+    user = Users.get_or_none(Users.id == message.from_user.id)
+    if not user:
+        return False
+
+    result = user.protect
+    return result
+
 def remove_dogs(user_id, e):
     try:
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -240,7 +292,8 @@ async def Send(message, keyboard, keyboard_del_my_msg, reply_data):
                     message,
                     user.id,
                     reply_markup=keyboard,
-                    reply_to_message_id=get_reply_id32(reply_data, user.id) if message.reply_to_message else None
+                    reply_to_message_id=get_reply_id32(reply_data, user.id) if message.reply_to_message else None,
+                    protect_content=protect(message)
                 )
             )
             tasks[task] = user.id
@@ -251,7 +304,8 @@ async def Send(message, keyboard, keyboard_del_my_msg, reply_data):
                     message,
                     message.from_user.id,
                     reply_markup=keyboard_del_my_msg,
-                    reply_to_message_id=get_reply_id32(reply_data, user.id) if message.reply_to_message else None
+                    reply_to_message_id=get_reply_id32(reply_data, user.id) if message.reply_to_message else None,
+                    protect_content=protect(message)
                 )
             )
             tasks[task] = user.id
@@ -291,6 +345,13 @@ async def any(message: Message):
         return
 
     user_id = message.from_user.id
+
+    if admin_mode:
+        if not Admins.get_or_none(Admins.id == user_id):
+            return await message.reply("Кроме админов писать сейчас <b>никто не может</b>.")
+        elif not Admins.get_or_none(Admins.id == user_id).tag:
+            return await message.reply("Сейчас включен ADMIN MODE при котором писать могут только админы, "
+                                     + "однако у тебя выключен админ тег, чтобы для тебя была возможность писать, включи /admintag")
 
     if datetime.now() < Users.get(Users.id==user_id).mute:
         delay = Users.get(Users.id == user_id).mute - datetime.now()

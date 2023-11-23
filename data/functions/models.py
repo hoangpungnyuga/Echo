@@ -19,6 +19,7 @@ class Users(BaseModel):
 	warns = IntegerField(default=0)
 	last_msg = TextField(null=True)
 	tag = BooleanField(default=False)
+	protect = BooleanField(default=False)
 
 class Admins(BaseModel):
 	id = PrimaryKeyField()
