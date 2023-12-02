@@ -337,6 +337,13 @@ async def Send(message, keyboard, keyboard_del_my_msg, reply_data):
     msgs_db.append(result) # type: ignore
     rdb.set("messages", msgs_db)
 
+last_message_time = {} # cooldown
+cooldown_time = 10  # 10 sec?
+
+async def add_to_last_message_time(message):
+    last_message_time[message.from_user.id] = datetime.now()
+    await asyncio.sleep(cooldown_time)
+    del last_message_time[message.from_user.id]
 
 @dp.message_handler(content_types="any")
 @registered_only
@@ -425,6 +432,9 @@ async def any(message: Message):
             "Либо, выключи /tag")
         return
 
+    if user_id in last_message_time:
+        return await message.reply(f'Не гони так, подожди {cooldown_time} секунд.')
+
     if Users.get(Users.id==user_id).tag:
         name = message.from_user.full_name
         admin = Admins.get_or_none(id=user_id)
@@ -480,6 +490,9 @@ async def any(message: Message):
         ims = await message.reply("Это флуд.\nВы были отключены от чата на 3 минуты", reply_markup=keyFlood)
         await bot.pin_chat_message(ims.chat.id, ims.message_id)
         return
+
+    # asyncio.create_task(add_to_last_message_time(message))
+    # this is cooldown
 
     users = Users.select()
     hey = await message.reply("Send..")
